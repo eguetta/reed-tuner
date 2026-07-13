@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Reed Tuner — Wurlitzer 112</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Reed Tuner">
+<meta name="theme-color" content="#241d18">
+<style>
+  :root{
+    --bake: #241d18;        /* bakelite brown-black */
+    --bake-2:#2f2620;
+    --ivory:#f0e7d4;        /* aged key ivory */
+    --ivory-dim:#b9ad93;
+    --copper:#c98a4b;       /* reed copper/brass */
+    --copper-hi:#e8b878;
+    --good:#8fc97a;
+    --warn:#e0b45a;
+    --bad:#d96b5a;
+    --dial-face:#ece1c6;
+    --dial-ink:#4a3b2a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bake);color:var(--ivory);
+    font-family:"Avenir Next","Futura","Century Gothic","Segoe UI",system-ui,sans-serif;
+    height:100%; overflow-x:hidden;}
+  body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;}
+
+  header{padding:14px 18px 6px;display:flex;align-items:baseline;justify-content:space-between;}
+  header h1{font-size:15px;letter-spacing:.22em;text-transform:uppercase;font-weight:600;margin:0;color:var(--copper-hi);}
+  header .sub{font-size:11px;letter-spacing:.12em;color:var(--ivory-dim);text-transform:uppercase;}
+
+  /* ---------- dial ---------- */
+  .dial-wrap{position:relative;margin:6px auto 0;width:min(92vw,430px);}
+  .dial-wrap svg{display:block;width:100%;height:auto;}
+  .freq-line{position:absolute;left:0;right:0;bottom:8%;text-align:center;
+    font-variant-numeric:tabular-nums;font-size:13px;color:var(--dial-ink);opacity:.85;letter-spacing:.06em;}
+
+  /* ---------- big readout ---------- */
+  .readout{text-align:center;margin-top:2px;}
+  .note-big{font-size:88px;font-weight:700;line-height:1;letter-spacing:.01em;
+    font-variant-numeric:tabular-nums;}
+  .note-big sup{font-size:40px;font-weight:600;color:var(--ivory-dim);}
+  .cents-big{font-size:34px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums;}
+  .vs-target{font-size:14px;color:var(--ivory-dim);margin-top:4px;letter-spacing:.04em;}
+  .status{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--ivory-dim);
+    margin-top:10px;min-height:20px;}
+  .status .pulse{color:var(--copper-hi);animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  @media (prefers-reduced-motion: reduce){.status .pulse{animation:none}}
+
+  /* ---------- controls ---------- */
+  .controls{margin:16px auto 0;width:min(92vw,430px);display:flex;gap:10px;align-items:stretch;}
+  button{font:inherit;border:0;border-radius:10px;cursor:pointer;}
+  #bigbtn{flex:1;background:var(--copper);color:#221a12;font-size:19px;font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;padding:18px 10px;border-radius:12px;
+    box-shadow:0 3px 0 #8a5a2c;}
+  #bigbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #8a5a2c;}
+  #bigbtn.listening{background:var(--bake-2);color:var(--copper-hi);box-shadow:inset 0 0 0 2px var(--copper);}
+
+  .target-box{background:var(--bake-2);border-radius:12px;padding:8px 12px;display:flex;
+    flex-direction:column;justify-content:center;gap:2px;min-width:118px;}
+  .target-box label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ivory-dim);}
+  .target-row{display:flex;align-items:center;gap:6px;}
+  .target-row button{background:transparent;color:var(--copper-hi);font-size:20px;width:28px;height:28px;line-height:1;border-radius:6px;}
+  .target-row button:active{background:rgba(255,255,255,.08);}
+  #targetVal{font-size:17px;font-weight:700;min-width:44px;text-align:center;font-variant-numeric:tabular-nums;}
+
+  .presets{margin:8px auto 0;width:min(92vw,430px);display:flex;gap:8px;}
+  .presets button{flex:1;background:transparent;color:var(--ivory-dim);border:1px solid #4a3d31;
+    border-radius:8px;padding:7px 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;}
+  .presets button.active{color:var(--copper-hi);border-color:var(--copper);}
+
+  /* ---------- pending-reading confirm bar ---------- */
+  .confirm{margin:12px auto 0;width:min(92vw,430px);display:none;background:var(--bake-2);
+    border:1px solid var(--copper);border-radius:12px;padding:10px 12px;}
+  .confirm.show{display:block;}
+  .confirm .cq{font-size:13px;color:var(--ivory-dim);letter-spacing:.04em;margin-bottom:8px;text-align:center;}
+  .confirm .cq b{color:var(--copper-hi);}
+  .confirm .nudge{display:flex;gap:6px;margin-bottom:8px;}
+  .confirm .nudge button{flex:1;background:transparent;color:var(--copper-hi);border:1px solid #4a3d31;
+    border-radius:8px;padding:8px 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;}
+  .confirm .nudge button:active{background:rgba(255,255,255,.08);}
+  .confirm .nudge select{flex:1.3;background:var(--bake);color:var(--copper-hi);border:1px solid var(--copper);
+    border-radius:8px;font:inherit;font-size:13px;font-weight:600;padding:6px 2px;text-align:center;
+    -webkit-appearance:none;appearance:none;}
+  #cSave:disabled{opacity:.35;pointer-events:none;}
+  .confirm .cbtns{display:flex;gap:8px;}
+  #cSave{flex:2;background:var(--copper);color:#221a12;font-weight:700;font-size:15px;
+    letter-spacing:.08em;text-transform:uppercase;padding:12px 8px;border-radius:10px;
+    box-shadow:0 2px 0 #8a5a2c;}
+  #cSave:active{transform:translateY(1px);box-shadow:0 1px 0 #8a5a2c;}
+  #cDiscard{flex:1;background:transparent;color:var(--ivory-dim);border:1px solid #4a3d31;
+    border-radius:10px;padding:12px 8px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;}
+  #cDiscard:active{background:rgba(255,255,255,.08);}
+
+  /* ---------- session board ---------- */
+  .history{margin:18px auto 24px;width:min(92vw,430px);flex:1;}
+  .history h2{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ivory-dim);
+    margin:0 0 8px;border-bottom:1px solid #4a3d31;padding-bottom:6px;
+    display:flex;justify-content:space-between;align-items:center;}
+  .sess-actions{display:flex;gap:6px;}
+  .sess-actions button{background:transparent;color:var(--copper-hi);border:1px solid #4a3d31;
+    border-radius:6px;padding:4px 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;}
+  .sess-actions button:active{background:rgba(255,255,255,.08);}
+  .nrow{cursor:pointer;}
+  .ncount{font-size:11px;color:var(--ivory-dim);margin-left:8px;}
+  .nhist{display:none;padding:2px 0 8px 12px;border-bottom:1px solid #362c23;}
+  .nhist.open{display:block;}
+  .nhist .hitem{display:flex;justify-content:space-between;font-size:13px;color:var(--ivory-dim);
+    padding:3px 0;font-variant-numeric:tabular-nums;}
+  .sess-meta{font-size:11px;color:var(--ivory-dim);letter-spacing:.06em;margin:4px 0 8px;}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--copper);
+    color:#221a12;font-weight:600;padding:10px 18px;border-radius:10px;font-size:14px;
+    opacity:0;pointer-events:none;transition:opacity .3s;z-index:9;}
+  .toast.show{opacity:1;}
+  .hrow{display:flex;justify-content:space-between;align-items:baseline;padding:7px 2px;
+    border-bottom:1px solid #362c23;font-variant-numeric:tabular-nums;}
+  .hrow .hn{font-size:17px;font-weight:600;width:64px;}
+  .hrow .hf{font-size:13px;color:var(--ivory-dim);}
+  .hrow .hc{font-size:16px;font-weight:600;width:78px;text-align:right;}
+  .empty{color:var(--ivory-dim);font-size:13px;padding:10px 2px;}
+
+  .err{margin:14px auto;width:min(92vw,430px);background:#3a231d;border:1px solid var(--bad);
+    border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.45;display:none;}
+  .err b{color:var(--bad);}
+
+  .c-good{color:var(--good)} .c-warn{color:var(--warn)} .c-bad{color:var(--bad)} .c-dim{color:var(--ivory-dim)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Reed Tuner</h1>
+  <div class="sub">Wurlitzer 112 · pluck &amp; hold still</div>
+</header>
+
+<div class="dial-wrap">
+  <svg viewBox="0 0 430 250" aria-label="cents deviation meter">
+    <!-- meter face -->
+    <path d="M15 235 A 215 215 0 0 1 415 235 L 415 248 L 15 248 Z" fill="var(--dial-face)"/>
+    <path d="M15 235 A 215 215 0 0 1 415 235" fill="none" stroke="#c9b895" stroke-width="2"/>
+    <g id="ticks"></g>
+    <g id="labels"></g>
+    <!-- target marker -->
+    <g id="targetMark"><polygon points="-6,0 6,0 0,12" fill="var(--copper)"/></g>
+    <!-- needle -->
+    <g id="needle">
+      <line x1="0" y1="0" x2="0" y2="-176" stroke="#7a2f22" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="9" fill="#3a2c1e"/>
+      <circle cx="0" cy="0" r="4" fill="var(--copper-hi)"/>
+    </g>
+    <text x="215" y="120" text-anchor="middle" font-size="13" letter-spacing="3" fill="var(--dial-ink)" opacity=".65">CENTS</text>
+  </svg>
+  <div class="freq-line" id="freqLine">&nbsp;</div>
+</div>
+
+<div class="readout">
+  <div class="note-big" id="noteBig">—</div>
+  <div class="cents-big c-dim" id="centsBig">&nbsp;</div>
+  <div class="vs-target" id="vsTarget">&nbsp;</div>
+  <div class="status" id="status">Tap Start, then pluck a reed</div>
+</div>
+
+<div class="confirm" id="confirmBar">
+  <div class="cq" id="confirmQ"></div>
+  <div class="nudge">
+    <button id="cOctDown">Oct −</button>
+    <button id="cSemiDown">Note −</button>
+    <select id="cNoteSel" aria-label="reed this should be"></select>
+    <button id="cSemiUp">Note +</button>
+    <button id="cOctUp">Oct +</button>
+  </div>
+  <div class="cbtns">
+    <button id="cDiscard">Discard</button>
+    <button id="cSave">Save</button>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="bigbtn">Start</button>
+  <div class="target-box">
+    <label>Tuning target</label>
+    <div class="target-row">
+      <button id="tminus" aria-label="lower target">−</button>
+      <span id="targetVal">+14¢</span>
+      <button id="tplus" aria-label="raise target">+</button>
+    </div>
+  </div>
+</div>
+
+<div class="presets">
+  <button id="pHouse" class="active">House avg (+14¢)</button>
+  <button id="pConcert">Concert A440 (0¢)</button>
+  <button id="pSurvey">Survey</button>
+</div>
+<div class="sess-meta" id="surveyResult" style="width:min(92vw,430px);margin:8px auto 0;display:none;line-height:1.5;"></div>
+
+<div class="err" id="errBox"></div>
+
+<div class="history">
+  <h2>
+    <span id="sessTitle">Session</span>
+    <span class="sess-actions">
+      <button id="btnExport">Export</button>
+      <button id="btnNewSess">New session</button>
+    </span>
+  </h2>
+  <div class="sess-meta" id="sessMeta"></div>
+  <div id="histList"><div class="empty">Confirmed readings appear here — only what you save is recorded.</div></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= meter drawing ================= */
+const SWEEP = 130; // degrees total (-65..+65)
+const RANGE = 50;  // cents each side
+function centsToAngle(c){ c = Math.max(-RANGE, Math.min(RANGE, c)); return (c/RANGE)*(SWEEP/2); }
+
+(function buildFace(){
+  const ticks = document.getElementById('ticks');
+  const labels = document.getElementById('labels');
+  const cx=215, cy=235, rOut=200, ns="http://www.w3.org/2000/svg";
+  for(let c=-50;c<=50;c+=5){
+    const a=(centsToAngle(c)-90)*Math.PI/180;
+    const major=(c%25===0), mid=(c%10===0);
+    const len= major?20 : mid?13 : 7;
+    const r1=rOut, r2=rOut-len;
+    const t=document.createElementNS(ns,'line');
+    t.setAttribute('x1',cx+r1*Math.cos(a)); t.setAttribute('y1',cy+r1*Math.sin(a));
+    t.setAttribute('x2',cx+r2*Math.cos(a)); t.setAttribute('y2',cy+r2*Math.sin(a));
+    t.setAttribute('stroke','var(--dial-ink)');
+    t.setAttribute('stroke-width', major?2.4:1.2);
+    ticks.appendChild(t);
+    if(major || Math.abs(c)===10){
+      const rl=rOut-32, l=document.createElementNS(ns,'text');
+      l.setAttribute('x',cx+rl*Math.cos(a)); l.setAttribute('y',cy+rl*Math.sin(a)+4);
+      l.setAttribute('text-anchor','middle'); l.setAttribute('font-size','13');
+      l.setAttribute('fill','var(--dial-ink)');
+      l.textContent=(c>0?'+':'')+c;
+      labels.appendChild(l);
+    }
+  }
+})();
+
+const needle = document.getElementById('needle');
+const targetMark = document.getElementById('targetMark');
+function setNeedle(c, instant){
+  const style = needle.style;
+  style.transition = instant ? 'none' : 'transform .5s cubic-bezier(.2,1.2,.4,1)';
+  style.transformOrigin='215px 235px';
+  style.transform = `translate(215px,235px) rotate(${centsToAngle(c)}deg) translate(-215px,-235px)`;
+  needle.setAttribute('transform',''); // ensure CSS transform used
+}
+function setTargetMark(c){
+  const a=centsToAngle(c);
+  targetMark.setAttribute('transform',`translate(215,235) rotate(${a}) translate(0,-206)`);
+}
+setNeedle(0,true);
+
+/* ================= state & target ================= */
+let target = 14;
+const targetVal=document.getElementById('targetVal');
+function renderTarget(){
+  targetVal.textContent=(target>0?'+':'')+target+'¢';
+  setTargetMark(target);
+  document.getElementById('pHouse').classList.toggle('active', target===14);
+  document.getElementById('pConcert').classList.toggle('active', target===0);
+}
+document.getElementById('tminus').onclick=()=>{target=Math.max(-50,target-1);renderTarget();};
+document.getElementById('tplus').onclick =()=>{target=Math.min(50,target+1);renderTarget();};
+document.getElementById('pHouse').onclick=()=>{target=14;renderTarget();};
+document.getElementById('pConcert').onclick=()=>{target=0;renderTarget();};
+renderTarget();
+
+/* ================= audio capture ================= */
+const NOTE_NAMES=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+let ctx=null, srcNode=null, proc=null, running=false;
+let ring=null, ringLen=0, ringPos=0, sr=48000;
+let mode='idle'; // idle | armed | capturing | analyzing | cooldown
+let capStart=0, capNeeded=0, noiseFloor=1e-4;
+
+const statusEl=document.getElementById('status');
+const bigbtn=document.getElementById('bigbtn');
+const errBox=document.getElementById('errBox');
+
+function setStatus(html){ statusEl.innerHTML=html; }
+
+async function start(){
+  errBox.style.display='none';
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{
+      echoCancellation:false, noiseSuppression:false, autoGainControl:false
+    }});
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+    await ctx.resume();
+    sr = ctx.sampleRate;
+    srcNode = ctx.createMediaStreamSource(stream);
+    proc = ctx.createScriptProcessor(4096,1,1);
+    ringLen = Math.ceil(sr*4); ring = new Float32Array(ringLen); ringPos=0;
+    proc.onaudioprocess = onAudio;
+    srcNode.connect(proc); proc.connect(ctx.destination); // destination connect needed on some browsers; proc outputs silence
+    running=true; mode='armed'; noiseFloor=1e-4;
+    bigbtn.textContent='Listening…'; bigbtn.classList.add('listening');
+    setStatus('<span class="pulse">● Pluck a reed</span>');
+  }catch(e){
+    errBox.style.display='block';
+    errBox.innerHTML='<b>Microphone blocked.</b> This page needs mic access. If you\'re viewing it inside another app and permission never appears, open the file from a proper web address (see hosting note) or try your phone\'s browser.<br><br><span style="opacity:.7">'+e.name+': '+e.message+'</span>';
+    setStatus('Mic unavailable');
+  }
+}
+function stop(){
+  running=false; mode='idle';
+  if(proc){proc.disconnect();proc=null;}
+  if(srcNode){srcNode.disconnect();srcNode=null;}
+  if(ctx){ctx.close();ctx=null;}
+  bigbtn.textContent='Start'; bigbtn.classList.remove('listening');
+  setStatus('Tap Start, then pluck a reed');
+}
+bigbtn.onclick=()=>{ running?stop():start(); };
+
+function onAudio(ev){
+  if(!running) return;
+  const inp = ev.inputBuffer.getChannelData(0);
+  // write to ring
+  for(let i=0;i<inp.length;i++){ ring[ringPos]=inp[i]; ringPos=(ringPos+1)%ringLen; }
+  // frame RMS
+  let s=0; for(let i=0;i<inp.length;i++) s+=inp[i]*inp[i];
+  const rms=Math.sqrt(s/inp.length);
+  if(mode==='armed'){
+    noiseFloor = Math.min(noiseFloor*1.02, Math.max(noiseFloor*0.995, 1e-5));
+    if(rms < noiseFloor*3) noiseFloor = noiseFloor*0.9 + rms*0.1;
+    const thresh = Math.max(noiseFloor*7, 0.006);
+    if(rms > thresh){
+      mode='capturing';
+      capStart = ringPos;                     // onset ≈ now
+      capNeeded = Math.ceil(sr*1.6);          // capture 1.6 s
+      capGot = 0;
+      setStatus('Recording…');
+    }
+  } else if(mode==='capturing'){
+    capGot += inp.length;
+    if(capGot >= capNeeded){
+      mode='analyzing';
+      setStatus('Analyzing…');
+      // copy out the captured stretch (start slightly before trigger to catch attack, skip first 60ms after)
+      const total = Math.ceil(sr*1.6);
+      const buf = new Float32Array(total);
+      let p = (capStart - Math.ceil(sr*0.05) + ringLen) % ringLen;
+      for(let i=0;i<total;i++){ buf[i]=ring[p]; p=(p+1)%ringLen; }
+      setTimeout(()=>analyzeAndShow(buf), 30); // let UI paint
+    }
+  }
+}
+let capGot=0;
+
+/* ================= analysis: FFT + harmonic summation ================= */
+function fftRadix2(re, im){
+  const n=re.length;
+  for(let i=1,j=0;i<n;i++){
+    let bit=n>>1;
+    for(;j&bit;bit>>=1) j^=bit;
+    j^=bit;
+    if(i<j){ let t=re[i];re[i]=re[j];re[j]=t; t=im[i];im[i]=im[j];im[j]=t; }
+  }
+  for(let len=2;len<=n;len<<=1){
+    const ang=-2*Math.PI/len, wr=Math.cos(ang), wi=Math.sin(ang);
+    for(let i=0;i<n;i+=len){
+      let cwr=1, cwi=0;
+      for(let k=0;k<len/2;k++){
+        const ur=re[i+k], ui=im[i+k];
+        const vr=re[i+k+len/2]*cwr - im[i+k+len/2]*cwi;
+        const vi=re[i+k+len/2]*cwi + im[i+k+len/2]*cwr;
+        re[i+k]=ur+vr; im[i+k]=ui+vi;
+        re[i+k+len/2]=ur-vr; im[i+k+len/2]=ui-vi;
+        const nwr=cwr*wr-cwi*wi; cwi=cwr*wi+cwi*wr; cwr=nwr;
+      }
+    }
+  }
+}
+
+// high reeds are nearly pure tones (bar overtones are inharmonic), so judge them
+// on fewer harmonic positions — extra positions only accumulate noise
+function nHarm(f0){ return f0>1000?3 : f0>500?5 : 8; }
+
+function computeSpectrum(buf, sampleRate){
+  // trim to the ringing part: skip the attack thump, stop once the tone has died away.
+  // Fast-decaying high reeds get a short clean window instead of 1.5 s of mostly noise.
+  const blk=Math.floor(sampleRate*0.02), nb=Math.floor(buf.length/blk);
+  const sBlk=Math.ceil(0.12/0.02);                 // 120 ms attack skip
+  const env=new Float32Array(nb); let epeak=0;
+  for(let b=0;b<nb;b++){
+    let s2=0; const o=b*blk;
+    for(let i=0;i<blk;i++) s2+=buf[o+i]*buf[o+i];
+    env[b]=Math.sqrt(s2/blk);
+    if(b>=sBlk && env[b]>epeak) epeak=env[b];      // peak of the ring, not of the attack thump
+  }
+  if(epeak<=0) return null;
+  let eBlk=nb;
+  for(let b=sBlk;b<nb;b++) if(env[b]<epeak*0.05){ eBlk=b; break; }
+  const minBlk=Math.ceil(0.35/0.02);               // but never below 0.35 s
+  if(eBlk-sBlk<minBlk) eBlk=Math.min(nb, sBlk+minBlk);
+  const seg=buf.subarray(sBlk*blk, eBlk*blk);
+  const N=seg.length;
+  // Hann window
+  const NFFT=524288; // 2^19 — heavy zero padding for resolution
+  const re=new Float32Array(NFFT), im=new Float32Array(NFFT);
+  for(let i=0;i<N && i<NFFT;i++){
+    const w=0.5*(1-Math.cos(2*Math.PI*i/(N-1)));
+    re[i]=seg[i]*w;
+  }
+  fftRadix2(re,im);
+  const half=NFFT>>1;
+  const mag=new Float32Array(half);
+  let mx=0;
+  for(let i=0;i<half;i++){ const m=Math.hypot(re[i],im[i]); mag[i]=m; if(m>mx)mx=m; }
+  if(mx<=0) return null;
+  // whiten: divide each bin by its local (±50 Hz) average, so a quiet high tone
+  // stands out just as much as a loud bass — the pluck thump can't dominate
+  const df=sampleRate/NFFT;
+  const W=Math.max(1,Math.round(50/df));
+  const pre=new Float64Array(half+1);
+  for(let i=0;i<half;i++) pre[i+1]=pre[i]+mag[i];
+  // regularize with the noise floor (median, subsampled) — a loud bass can't
+  // inflate the median the way it inflates the mean
+  const sub=[];
+  for(let i=0;i<half;i+=8) sub.push(mag[i]);
+  sub.sort((a,b)=>a-b);
+  const eps=Math.max(0.5*sub[sub.length>>1], mx*1e-6);
+  const white=new Float32Array(half);
+  for(let i=0;i<half;i++){
+    const lo=Math.max(0,i-W), hi=Math.min(half,i+W+1);
+    white[i]=Math.min(100, mag[i]/((pre[hi]-pre[lo])/(hi-lo)+eps));
+  }
+  return {white:white, df:df, half:half};
+}
+
+// harmonic summation over 1-cent grid within [fMin, fMax], on the whitened spectrum
+function pickPitch(spec, fMin, fMax){
+  const {white,df,half}=spec;
+  const nCand=Math.floor(1200*Math.log2(fMax/fMin));
+  const fCap=Math.min(df*half, 10000); // ignore the near-dead top of the spectrum
+  let bestScore=-1, bestF=0;
+  for(let c=0;c<nCand;c++){
+    const f0=fMin*Math.pow(2,c/1200);
+    const NH=nHarm(f0);
+    let score=0, pk1=0;
+    for(let h=1;h<=NH;h++){
+      const fh=f0*h; if(fh>=fCap) break;
+      const i0=Math.round(fh/df);
+      let pk=0;
+      for(let q=-2;q<=2;q++){ const v=white[Math.min(half-1,Math.max(0,i0+q))]; if(v>pk)pk=v; }
+      if(h===1){ pk1=pk; if(pk1<4) break; }    // only candidates with a real peak at
+      score+=pk/Math.sqrt(h);                  // their own fundamental (≥4× local floor)
+    }                                          // are eligible — kills thumps & subharmonics
+    if(pk1>=4 && score>bestScore){bestScore=score;bestF=f0;}
+  }
+  if(bestScore<0) return null; // no candidate with a clear fundamental anywhere in range
+
+  // refine on strongest harmonic with parabolic interpolation
+  let bAmp=0,bH=1,bI=-1;
+  const NH=nHarm(bestF);
+  for(let h=1;h<=NH;h++){
+    const i0=Math.round(bestF*h/df);
+    const w=Math.max(3,Math.round(bestF*0.02*h/df));
+    const lo=Math.max(1,i0-w), hi=Math.min(half-2,i0+w);
+    if(hi<=lo)break;
+    for(let i=lo;i<=hi;i++) if(white[i]>bAmp){bAmp=white[i];bH=h;bI=i;}
+  }
+  if(bI<1) return bestF;
+  const a=white[bI-1],b=white[bI],c2=white[bI+1];
+  const den=a-2*b+c2;
+  const dp=Math.abs(den)>1e-12 ? 0.5*(a-c2)/den : 0;
+  return (bI+dp)*df/bH;
+}
+
+/* ================= result display ================= */
+const noteBig=document.getElementById('noteBig');
+const centsBig=document.getElementById('centsBig');
+const vsTarget=document.getElementById('vsTarget');
+const freqLine=document.getElementById('freqLine');
+const histList=document.getElementById('histList');
+
+function colorClass(dev){
+  const d=Math.abs(dev);
+  return d<=5?'c-good' : d<=15?'c-warn' : 'c-bad';
+}
+
+/* ================= sessions (persistent) ================= */
+const STORE_KEY='reedtuner_sessions_v1';
+let store=null;   // {sessions:[{id,name,created,targetAtStart,readings:[{ts,label,midi,f0,cents}]}], currentId}
+let openNotes={}; // which note rows are expanded
+
+function loadStore(){
+  try{ store=JSON.parse(localStorage.getItem(STORE_KEY)); }catch(e){ store=null; }
+  if(!store || !store.sessions){ store={sessions:[],currentId:null}; }
+  if(!store.currentId || !getSession(store.currentId)) newSession(false);
+}
+function saveStore(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  catch(e){ toast('Could not save (storage unavailable)'); }
+}
+function getSession(id){ return store.sessions.find(s=>s.id===id); }
+function cur(){ return getSession(store.currentId); }
+function fmtDate(ts){
+  const d=new Date(ts);
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+
+         d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+}
+function newSession(announce){
+  const now=Date.now();
+  const s={id:'s'+now, name:'Session '+fmtDate(now), created:now,
+           targetAtStart:target, readings:[]};
+  store.sessions.push(s);
+  // keep at most 20 sessions
+  while(store.sessions.length>20) store.sessions.shift();
+  store.currentId=s.id;
+  openNotes={};
+  saveStore(); renderSession();
+  if(announce!==false) toast('New session started');
+}
+function addReading(label, midi, f0, cents){
+  const s=cur(); if(!s) return;
+  s.readings.push({ts:Date.now(), label:label, midi:midi,
+                   f0:Math.round(f0*100)/100, cents:Math.round(cents*10)/10});
+  saveStore(); renderSession();
+}
+function renderSession(){
+  const s=cur(); if(!s) return;
+  document.getElementById('sessTitle').textContent=s.name;
+  const n=s.readings.length;
+  const notesSeen=new Set(s.readings.map(r=>r.label)).size;
+  document.getElementById('sessMeta').textContent=
+    n? (n+' plucks · '+notesSeen+' reeds · target '+(target>=0?'+':'')+target+'¢') : 'No readings yet';
+  if(!n){ histList.innerHTML='<div class="empty">Confirmed readings appear here — only what you save is recorded.</div>'; return; }
+  // group by note, keep reading order per note; sort groups by pitch (midi)
+  const groups={};
+  for(const r of s.readings){ (groups[r.label]=groups[r.label]||[]).push(r); }
+  const labels=Object.keys(groups).sort((a,b)=>groups[a][0].midi-groups[b][0].midi);
+  histList.innerHTML='';
+  for(const lab of labels){
+    const rs=groups[lab], last=rs[rs.length-1];
+    const dev=last.cents-target;
+    const row=document.createElement('div');
+    row.className='hrow nrow';
+    row.innerHTML='<span class="hn">'+lab+'<span class="ncount">×'+rs.length+'</span></span>'+
+      '<span class="hf">'+last.f0.toFixed(2)+' Hz</span>'+
+      '<span class="hc '+colorClass(dev)+'">'+(last.cents>=0?'+':'')+last.cents.toFixed(1)+'¢</span>';
+    const hist=document.createElement('div');
+    hist.className='nhist'+(openNotes[lab]?' open':'');
+    for(let i=rs.length-1;i>=0;i--){
+      const r=rs[i];
+      const it=document.createElement('div');
+      it.className='hitem';
+      it.innerHTML='<span>'+fmtDate(r.ts)+'</span><span>'+r.f0.toFixed(2)+' Hz</span>'+
+        '<span class="'+colorClass(r.cents-target)+'">'+(r.cents>=0?'+':'')+r.cents.toFixed(1)+'¢</span>';
+      hist.appendChild(it);
+    }
+    row.onclick=()=>{ openNotes[lab]=!openNotes[lab]; hist.classList.toggle('open'); };
+    histList.appendChild(row); histList.appendChild(hist);
+  }
+}
+function exportSession(){
+  const s=cur(); if(!s || !s.readings.length){ toast('Nothing to export yet'); return; }
+  let out=s.name+' — Reed Tuner export\n';
+  out+='Target: '+(target>=0?'+':'')+target+'¢ vs A440\n\n';
+  out+='Note\tLatest ¢\tLatest Hz\tPlucks\tAll readings (oldest→newest)\n';
+  const groups={};
+  for(const r of s.readings){ (groups[r.label]=groups[r.label]||[]).push(r); }
+  const labels=Object.keys(groups).sort((a,b)=>groups[a][0].midi-groups[b][0].midi);
+  for(const lab of labels){
+    const rs=groups[lab], last=rs[rs.length-1];
+    out+=lab+'\t'+(last.cents>=0?'+':'')+last.cents.toFixed(1)+'\t'+last.f0.toFixed(2)+'\t'+rs.length+'\t'+
+      rs.map(r=>(r.cents>=0?'+':'')+r.cents.toFixed(1)+'¢').join(', ')+'\n';
+  }
+  // copy to clipboard, with fallback
+  const done=()=>toast('Report copied — paste it anywhere');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(out).then(done).catch(()=>fallbackCopy(out,done));
+  } else fallbackCopy(out,done);
+}
+function fallbackCopy(text,done){
+  const ta=document.createElement('textarea');
+  ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); done(); }
+  catch(e){ toast('Copy failed'); }
+  document.body.removeChild(ta);
+}
+let toastTimer=null;
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'), 2200);
+}
+document.getElementById('btnNewSess').onclick=()=>{
+  const s=cur();
+  if(s && s.readings.length && !confirm('Start a new session? The current one stays saved and exportable later.')) return;
+  newSession();
+};
+document.getElementById('btnExport').onclick=exportSession;
+
+/* ================= survey mode (establish house average) ================= */
+let surveyOn=false;
+let surveyMap={};   // label -> {midi, cents} (latest pluck per reed)
+const pSurvey=document.getElementById('pSurvey');
+const surveyResult=document.getElementById('surveyResult');
+
+function surveyStart(){
+  surveyOn=true; surveyMap={};
+  pSurvey.textContent='Finish (0 reeds)';
+  pSurvey.classList.add('active');
+  surveyResult.style.display='none';
+  toast('Survey: pluck every reed, A1 upward');
+  if(!running) setStatus('Tap Start, then pluck every reed from the bottom up');
+}
+function surveyNote(label, midi, cents){
+  if(!surveyOn) return;
+  surveyMap[label]={midi:midi, cents:cents};   // repeat plucks overwrite within the survey — latest counts
+  pSurvey.textContent='Finish ('+Object.keys(surveyMap).length+' reeds)';
+}
+function median(arr){
+  const a=[...arr].sort((x,y)=>x-y);
+  const m=a.length>>1;
+  return a.length%2 ? a[m] : (a[m-1]+a[m])/2;
+}
+function surveyFinish(){
+  surveyOn=false;
+  pSurvey.classList.remove('active');
+  pSurvey.textContent='Survey';
+  const labels=Object.keys(surveyMap);
+  if(labels.length<8){
+    toast(labels.length?'Only '+labels.length+' reeds — too few for an average':'Survey cancelled');
+    return;
+  }
+  const houseExact=median(labels.map(l=>surveyMap[l].cents));
+  const house=Math.round(houseExact);
+  // outliers: > 12 cents from the house median
+  const sorted=labels.sort((a,b)=>surveyMap[a].midi-surveyMap[b].midi);
+  const sharps=[], flats=[];
+  for(const l of sorted){
+    const d=surveyMap[l].cents-houseExact;
+    if(d>12) sharps.push(l+' ('+(d>0?'+':'')+d.toFixed(0)+'¢)');
+    else if(d<-12) flats.push(l+' ('+d.toFixed(0)+'¢)');
+  }
+  let html='<b style="color:var(--copper-hi)">House average: '+(house>=0?'+':'')+house+
+    '¢</b> (median of '+labels.length+' reeds)';
+  if(sharps.length) html+='<br>Sharp of the pack: '+sharps.join(', ');
+  if(flats.length)  html+='<br>Flat of the pack: '+flats.join(', ');
+  if(!sharps.length && !flats.length) html+='<br>No reed strays more than 12¢ from the pack.';
+  surveyResult.innerHTML=html;
+  surveyResult.style.display='block';
+  if(confirm('House average is '+(house>=0?'+':'')+house+'¢. Set it as the tuning target?')){
+    target=Math.max(-50,Math.min(50,house));
+    renderTarget();
+    toast('Target set to '+(target>=0?'+':'')+target+'¢');
+  }
+}
+pSurvey.onclick=()=>{ surveyOn ? surveyFinish() : surveyStart(); };
+
+loadStore(); renderSession();
+
+/* ================= pending reading — nothing is saved until confirmed ================= */
+let pending=null;  // {f0, m, noTone, asserted}  m = MIDI note the reed is meant to be
+let lastSpec=null; // spectrum of the last pluck, kept so asserting a note can re-measure
+const confirmBar=document.getElementById('confirmBar');
+const confirmQ=document.getElementById('confirmQ');
+const cSave=document.getElementById('cSave');
+const cNoteSel=document.getElementById('cNoteSel');
+
+function labelOf(m){ return NOTE_NAMES[((m%12)+12)%12] + (Math.floor(m/12)-1); }
+function centsFor(f0,m){ return 1200*Math.log2(f0/(440*Math.pow(2,(m-69)/12))); }
+
+for(let m=21;m<=108;m++){ // A0..C8 picker
+  const o=document.createElement('option'); o.value=m; o.textContent=labelOf(m);
+  cNoteSel.appendChild(o);
+}
+
+function renderPending(){
+  if(!pending){ confirmBar.classList.remove('show'); return; }
+  const {f0,m}=pending;
+  const lab=labelOf(m);
+  const name=NOTE_NAMES[((m%12)+12)%12], oct=Math.floor(m/12)-1;
+  noteBig.innerHTML=name+'<sup>'+oct+'</sup>';
+  cNoteSel.value=String(m);
+  if(pending.noTone){
+    centsBig.textContent='—'; centsBig.className='cents-big c-dim';
+    vsTarget.textContent=' '; freqLine.textContent='—';
+    confirmQ.innerHTML='No clear tone near <b>'+lab+'</b> in that pluck — pick another note, pluck again, or discard.';
+    cSave.textContent='Save'; cSave.disabled=true;
+  }else{
+    const cents=centsFor(f0,m), dev=cents-target;
+    centsBig.textContent=(cents>=0?'+':'')+cents.toFixed(1)+'¢ vs A440';
+    centsBig.className='cents-big '+colorClass(dev);
+    vsTarget.textContent=(dev>=0?'+':'')+dev.toFixed(1)+'¢ from your target ('+(target>=0?'+':'')+target+'¢)';
+    freqLine.textContent=f0.toFixed(2)+' Hz';
+    setNeedle(cents,false);
+    confirmQ.innerHTML=(pending.asserted?'Re-measured near <b>'+lab+'</b>: found ':'Heard ')+
+      f0.toFixed(2)+' Hz — reed <b>'+lab+'</b>? If not, pick the reed it should be and I\'ll re-measure.';
+    cSave.textContent='Save '+lab; cSave.disabled=false;
+  }
+  confirmBar.classList.add('show');
+}
+// Asserting a note re-measures the pluck within ±150¢ of that note's expected frequency.
+function assertNote(m){
+  if(!pending) return;
+  m=Math.max(21,Math.min(108,m));
+  pending.m=m; pending.asserted=true;
+  if(lastSpec){
+    const noteF=440*Math.pow(2,(m-69)/12);
+    const f=pickPitch(lastSpec, noteF*Math.pow(2,-150/1200), noteF*Math.pow(2,150/1200));
+    if(f){ pending.f0=f; pending.noTone=false; }
+    else pending.noTone=true;
+  }
+  renderPending();
+}
+document.getElementById('cOctDown').onclick=()=>{ if(pending) assertNote(pending.m-12); };
+document.getElementById('cOctUp').onclick  =()=>{ if(pending) assertNote(pending.m+12); };
+document.getElementById('cSemiDown').onclick=()=>{ if(pending) assertNote(pending.m-1); };
+document.getElementById('cSemiUp').onclick  =()=>{ if(pending) assertNote(pending.m+1); };
+cNoteSel.onchange=()=>{ if(pending) assertNote(+cNoteSel.value); };
+document.getElementById('cDiscard').onclick=()=>{ pending=null; renderPending(); toast('Reading discarded'); };
+cSave.onclick=()=>{
+  if(!pending || pending.noTone) return;
+  const {f0,m}=pending;
+  const cents=centsFor(f0,m), lab=labelOf(m);
+  addReading(lab, m, f0, cents);
+  surveyNote(lab, m, cents);
+  pending=null; renderPending();
+  toast('Saved '+lab);
+};
+
+function analyzeAndShow(buf){
+  const spec=computeSpectrum(buf,sr);
+  const f0=spec ? pickPitch(spec,50,2400) : null;
+  if(!f0){
+    setStatus('Couldn\'t hear a clear pitch — try again, closer to the reed');
+    mode='armed';
+    return;
+  }
+  lastSpec=spec;
+  const m=Math.round(69+12*Math.log2(f0/440));
+  if(pending) toast('Unsaved reading replaced');
+  pending={f0:f0, m:m, noTone:false, asserted:false};
+  renderPending();
+
+  // brief cooldown so the reed's own ring doesn't retrigger
+  mode='cooldown';
+  setStatus('…');
+  setTimeout(()=>{ if(running){ mode='armed'; noiseFloor=1e-4;
+    setStatus('<span class="pulse">● Confirm below, or pluck again</span>'); } }, 1200);
+}
+
+// offline support when installed as a home-screen app
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
