@@ -46,7 +46,6 @@
     font-variant-numeric:tabular-nums;}
   .note-big sup{font-size:40px;font-weight:600;color:var(--ivory-dim);}
   .cents-big{font-size:34px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums;}
-  .vs-target{font-size:14px;color:var(--ivory-dim);margin-top:4px;letter-spacing:.04em;}
   .status{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--ivory-dim);
     margin-top:10px;min-height:20px;}
   .status .pulse{color:var(--copper-hi);animation:pulse 1.4s ease-in-out infinite;}
@@ -61,19 +60,6 @@
     box-shadow:0 3px 0 #8a5a2c;}
   #bigbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #8a5a2c;}
   #bigbtn.listening{background:var(--bake-2);color:var(--copper-hi);box-shadow:inset 0 0 0 2px var(--copper);}
-
-  .target-box{background:var(--bake-2);border-radius:12px;padding:8px 12px;display:flex;
-    flex-direction:column;justify-content:center;gap:2px;min-width:118px;}
-  .target-box label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ivory-dim);}
-  .target-row{display:flex;align-items:center;gap:6px;}
-  .target-row button{background:transparent;color:var(--copper-hi);font-size:20px;width:28px;height:28px;line-height:1;border-radius:6px;}
-  .target-row button:active{background:rgba(255,255,255,.08);}
-  #targetVal{font-size:17px;font-weight:700;min-width:44px;text-align:center;font-variant-numeric:tabular-nums;}
-
-  .presets{margin:8px auto 0;width:min(92vw,430px);display:flex;gap:8px;}
-  .presets button{flex:1;background:transparent;color:var(--ivory-dim);border:1px solid #4a3d31;
-    border-radius:8px;padding:7px 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;}
-  .presets button.active{color:var(--copper-hi);border-color:var(--copper);}
 
   /* ---------- pending-reading confirm bar ---------- */
   .confirm{margin:12px auto 0;width:min(92vw,430px);display:none;background:var(--bake-2);
@@ -90,6 +76,18 @@
     -webkit-appearance:none;appearance:none;}
   #cSave:disabled{opacity:.35;pointer-events:none;}
   .confirm .cbtns{display:flex;gap:8px;}
+  #cLock{flex:1;background:transparent;color:var(--copper-hi);border:1px solid var(--copper);
+    border-radius:10px;padding:12px 8px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;}
+  #cLock:active{background:rgba(255,255,255,.08);}
+  #cLock.on{background:var(--copper);color:#221a12;font-weight:700;}
+
+  /* ---------- lock banner ---------- */
+  .lockbar{margin:10px auto 0;width:min(92vw,430px);display:none;align-items:center;justify-content:center;
+    gap:8px;background:var(--bake-2);border:1px solid var(--copper);border-radius:10px;
+    padding:10px 12px;font-size:13px;letter-spacing:.06em;color:var(--copper-hi);cursor:pointer;}
+  .lockbar.show{display:flex;}
+  .lockbar b{font-size:15px;}
+  .lockbar .unhint{color:var(--ivory-dim);font-size:11px;text-transform:uppercase;letter-spacing:.1em;}
   #cSave{flex:2;background:var(--copper);color:#221a12;font-weight:700;font-size:15px;
     letter-spacing:.08em;text-transform:uppercase;padding:12px 8px;border-radius:10px;
     box-shadow:0 2px 0 #8a5a2c;}
@@ -146,8 +144,6 @@
     <path d="M15 235 A 215 215 0 0 1 415 235" fill="none" stroke="#c9b895" stroke-width="2"/>
     <g id="ticks"></g>
     <g id="labels"></g>
-    <!-- target marker -->
-    <g id="targetMark"><polygon points="-6,0 6,0 0,12" fill="var(--copper)"/></g>
     <!-- needle -->
     <g id="needle">
       <line x1="0" y1="0" x2="0" y2="-176" stroke="#7a2f22" stroke-width="3.4" stroke-linecap="round"/>
@@ -162,7 +158,6 @@
 <div class="readout">
   <div class="note-big" id="noteBig">—</div>
   <div class="cents-big c-dim" id="centsBig">&nbsp;</div>
-  <div class="vs-target" id="vsTarget">&nbsp;</div>
   <div class="status" id="status">Tap Start, then pluck a reed</div>
 </div>
 
@@ -177,28 +172,19 @@
   </div>
   <div class="cbtns">
     <button id="cDiscard">Discard</button>
+    <button id="cLock">🔒 Lock</button>
     <button id="cSave">Save</button>
   </div>
 </div>
 
-<div class="controls">
-  <button id="bigbtn">Start</button>
-  <div class="target-box">
-    <label>Tuning target</label>
-    <div class="target-row">
-      <button id="tminus" aria-label="lower target">−</button>
-      <span id="targetVal">+14¢</span>
-      <button id="tplus" aria-label="raise target">+</button>
-    </div>
-  </div>
+<div class="lockbar" id="lockBar">
+  <span>🔒 Locked to <b id="lockNote"></b></span>
+  <span class="unhint">tap to unlock</span>
 </div>
 
-<div class="presets">
-  <button id="pHouse" class="active">House avg (+14¢)</button>
-  <button id="pConcert">Concert A440 (0¢)</button>
-  <button id="pSurvey">Survey</button>
+<div class="controls">
+  <button id="bigbtn">Start</button>
 </div>
-<div class="sess-meta" id="surveyResult" style="width:min(92vw,430px);margin:8px auto 0;display:none;line-height:1.5;"></div>
 
 <div class="err" id="errBox"></div>
 
@@ -248,7 +234,6 @@ function centsToAngle(c){ c = Math.max(-RANGE, Math.min(RANGE, c)); return (c/RA
 })();
 
 const needle = document.getElementById('needle');
-const targetMark = document.getElementById('targetMark');
 function setNeedle(c, instant){
   const style = needle.style;
   style.transition = instant ? 'none' : 'transform .5s cubic-bezier(.2,1.2,.4,1)';
@@ -256,26 +241,7 @@ function setNeedle(c, instant){
   style.transform = `translate(215px,235px) rotate(${centsToAngle(c)}deg) translate(-215px,-235px)`;
   needle.setAttribute('transform',''); // ensure CSS transform used
 }
-function setTargetMark(c){
-  const a=centsToAngle(c);
-  targetMark.setAttribute('transform',`translate(215,235) rotate(${a}) translate(0,-206)`);
-}
 setNeedle(0,true);
-
-/* ================= state & target ================= */
-let target = 14;
-const targetVal=document.getElementById('targetVal');
-function renderTarget(){
-  targetVal.textContent=(target>0?'+':'')+target+'¢';
-  setTargetMark(target);
-  document.getElementById('pHouse').classList.toggle('active', target===14);
-  document.getElementById('pConcert').classList.toggle('active', target===0);
-}
-document.getElementById('tminus').onclick=()=>{target=Math.max(-50,target-1);renderTarget();};
-document.getElementById('tplus').onclick =()=>{target=Math.min(50,target+1);renderTarget();};
-document.getElementById('pHouse').onclick=()=>{target=14;renderTarget();};
-document.getElementById('pConcert').onclick=()=>{target=0;renderTarget();};
-renderTarget();
 
 /* ================= audio capture ================= */
 const NOTE_NAMES=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
@@ -481,7 +447,6 @@ function pickPitch(spec, fMin, fMax){
 /* ================= result display ================= */
 const noteBig=document.getElementById('noteBig');
 const centsBig=document.getElementById('centsBig');
-const vsTarget=document.getElementById('vsTarget');
 const freqLine=document.getElementById('freqLine');
 const histList=document.getElementById('histList');
 
@@ -492,7 +457,7 @@ function colorClass(dev){
 
 /* ================= sessions (persistent) ================= */
 const STORE_KEY='reedtuner_sessions_v1';
-let store=null;   // {sessions:[{id,name,created,targetAtStart,readings:[{ts,label,midi,f0,cents}]}], currentId}
+let store=null;   // {sessions:[{id,name,created,readings:[{ts,label,midi,f0,cents}]}], currentId}
 let openNotes={}; // which note rows are expanded
 
 function loadStore(){
@@ -513,8 +478,7 @@ function fmtDate(ts){
 }
 function newSession(announce){
   const now=Date.now();
-  const s={id:'s'+now, name:'Session '+fmtDate(now), created:now,
-           targetAtStart:target, readings:[]};
+  const s={id:'s'+now, name:'Session '+fmtDate(now), created:now, readings:[]};
   store.sessions.push(s);
   // keep at most 20 sessions
   while(store.sessions.length>20) store.sessions.shift();
@@ -535,7 +499,7 @@ function renderSession(){
   const n=s.readings.length;
   const notesSeen=new Set(s.readings.map(r=>r.label)).size;
   document.getElementById('sessMeta').textContent=
-    n? (n+' plucks · '+notesSeen+' reeds · target '+(target>=0?'+':'')+target+'¢') : 'No readings yet';
+    n? (n+' plucks · '+notesSeen+' reeds') : 'No readings yet';
   if(!n){ histList.innerHTML='<div class="empty">Confirmed readings appear here — only what you save is recorded.</div>'; return; }
   // group by note, keep reading order per note; sort groups by pitch (midi)
   const groups={};
@@ -544,7 +508,7 @@ function renderSession(){
   histList.innerHTML='';
   for(const lab of labels){
     const rs=groups[lab], last=rs[rs.length-1];
-    const dev=last.cents-target;
+    const dev=last.cents;
     const row=document.createElement('div');
     row.className='hrow nrow';
     row.innerHTML='<span class="hn">'+lab+'<span class="ncount">×'+rs.length+'</span></span>'+
@@ -557,7 +521,7 @@ function renderSession(){
       const it=document.createElement('div');
       it.className='hitem';
       it.innerHTML='<span>'+fmtDate(r.ts)+'</span><span>'+r.f0.toFixed(2)+' Hz</span>'+
-        '<span class="'+colorClass(r.cents-target)+'">'+(r.cents>=0?'+':'')+r.cents.toFixed(1)+'¢</span>';
+        '<span class="'+colorClass(r.cents)+'">'+(r.cents>=0?'+':'')+r.cents.toFixed(1)+'¢</span>';
       hist.appendChild(it);
     }
     row.onclick=()=>{ openNotes[lab]=!openNotes[lab]; hist.classList.toggle('open'); };
@@ -567,7 +531,7 @@ function renderSession(){
 function exportSession(){
   const s=cur(); if(!s || !s.readings.length){ toast('Nothing to export yet'); return; }
   let out=s.name+' — Reed Tuner export\n';
-  out+='Target: '+(target>=0?'+':'')+target+'¢ vs A440\n\n';
+  out+='Tuning reference: concert pitch (A440)\n\n';
   out+='Note\tLatest ¢\tLatest Hz\tPlucks\tAll readings (oldest→newest)\n';
   const groups={};
   for(const r of s.readings){ (groups[r.label]=groups[r.label]||[]).push(r); }
@@ -605,73 +569,18 @@ document.getElementById('btnNewSess').onclick=()=>{
 };
 document.getElementById('btnExport').onclick=exportSession;
 
-/* ================= survey mode (establish house average) ================= */
-let surveyOn=false;
-let surveyMap={};   // label -> {midi, cents} (latest pluck per reed)
-const pSurvey=document.getElementById('pSurvey');
-const surveyResult=document.getElementById('surveyResult');
-
-function surveyStart(){
-  surveyOn=true; surveyMap={};
-  pSurvey.textContent='Finish (0 reeds)';
-  pSurvey.classList.add('active');
-  surveyResult.style.display='none';
-  toast('Survey: pluck every reed, A1 upward');
-  if(!running) setStatus('Tap Start, then pluck every reed from the bottom up');
-}
-function surveyNote(label, midi, cents){
-  if(!surveyOn) return;
-  surveyMap[label]={midi:midi, cents:cents};   // repeat plucks overwrite within the survey — latest counts
-  pSurvey.textContent='Finish ('+Object.keys(surveyMap).length+' reeds)';
-}
-function median(arr){
-  const a=[...arr].sort((x,y)=>x-y);
-  const m=a.length>>1;
-  return a.length%2 ? a[m] : (a[m-1]+a[m])/2;
-}
-function surveyFinish(){
-  surveyOn=false;
-  pSurvey.classList.remove('active');
-  pSurvey.textContent='Survey';
-  const labels=Object.keys(surveyMap);
-  if(labels.length<8){
-    toast(labels.length?'Only '+labels.length+' reeds — too few for an average':'Survey cancelled');
-    return;
-  }
-  const houseExact=median(labels.map(l=>surveyMap[l].cents));
-  const house=Math.round(houseExact);
-  // outliers: > 12 cents from the house median
-  const sorted=labels.sort((a,b)=>surveyMap[a].midi-surveyMap[b].midi);
-  const sharps=[], flats=[];
-  for(const l of sorted){
-    const d=surveyMap[l].cents-houseExact;
-    if(d>12) sharps.push(l+' ('+(d>0?'+':'')+d.toFixed(0)+'¢)');
-    else if(d<-12) flats.push(l+' ('+d.toFixed(0)+'¢)');
-  }
-  let html='<b style="color:var(--copper-hi)">House average: '+(house>=0?'+':'')+house+
-    '¢</b> (median of '+labels.length+' reeds)';
-  if(sharps.length) html+='<br>Sharp of the pack: '+sharps.join(', ');
-  if(flats.length)  html+='<br>Flat of the pack: '+flats.join(', ');
-  if(!sharps.length && !flats.length) html+='<br>No reed strays more than 12¢ from the pack.';
-  surveyResult.innerHTML=html;
-  surveyResult.style.display='block';
-  if(confirm('House average is '+(house>=0?'+':'')+house+'¢. Set it as the tuning target?')){
-    target=Math.max(-50,Math.min(50,house));
-    renderTarget();
-    toast('Target set to '+(target>=0?'+':'')+target+'¢');
-  }
-}
-pSurvey.onclick=()=>{ surveyOn ? surveyFinish() : surveyStart(); };
-
 loadStore(); renderSession();
 
 /* ================= pending reading — nothing is saved until confirmed ================= */
 let pending=null;  // {f0, m, noTone, asserted}  m = MIDI note the reed is meant to be
 let lastSpec=null; // spectrum of the last pluck, kept so asserting a note can re-measure
+let lockedM=null;  // when set, detection only searches near this MIDI note
 const confirmBar=document.getElementById('confirmBar');
 const confirmQ=document.getElementById('confirmQ');
 const cSave=document.getElementById('cSave');
+const cLock=document.getElementById('cLock');
 const cNoteSel=document.getElementById('cNoteSel');
+const lockBar=document.getElementById('lockBar');
 
 function labelOf(m){ return NOTE_NAMES[((m%12)+12)%12] + (Math.floor(m/12)-1); }
 function centsFor(f0,m){ return 1200*Math.log2(f0/(440*Math.pow(2,(m-69)/12))); }
@@ -690,27 +599,56 @@ function renderPending(){
   cNoteSel.value=String(m);
   if(pending.noTone){
     centsBig.textContent='—'; centsBig.className='cents-big c-dim';
-    vsTarget.textContent=' '; freqLine.textContent='—';
+    freqLine.textContent='—';
     confirmQ.innerHTML='No clear tone near <b>'+lab+'</b> in that pluck — pick another note, pluck again, or discard.';
     cSave.textContent='Save'; cSave.disabled=true;
   }else{
-    const cents=centsFor(f0,m), dev=cents-target;
-    centsBig.textContent=(cents>=0?'+':'')+cents.toFixed(1)+'¢ vs A440';
-    centsBig.className='cents-big '+colorClass(dev);
-    vsTarget.textContent=(dev>=0?'+':'')+dev.toFixed(1)+'¢ from your target ('+(target>=0?'+':'')+target+'¢)';
+    const cents=centsFor(f0,m);
+    centsBig.textContent=(cents>=0?'+':'')+cents.toFixed(1)+'¢';
+    centsBig.className='cents-big '+colorClass(cents);
     freqLine.textContent=f0.toFixed(2)+' Hz';
     setNeedle(cents,false);
-    confirmQ.innerHTML=(pending.asserted?'Re-measured near <b>'+lab+'</b>: found ':'Heard ')+
+    confirmQ.innerHTML=(lockedM===m?'Locked to <b>'+lab+'</b>: heard ':
+      pending.asserted?'Re-measured near <b>'+lab+'</b>: found ':'Heard ')+
       f0.toFixed(2)+' Hz — reed <b>'+lab+'</b>? If not, pick the reed it should be and I\'ll re-measure.';
     cSave.textContent='Save '+lab; cSave.disabled=false;
   }
   confirmBar.classList.add('show');
 }
+function renderLock(){
+  const on = lockedM!==null;
+  lockBar.classList.toggle('show', on);
+  if(on) document.getElementById('lockNote').textContent=labelOf(lockedM);
+  cLock.classList.toggle('on', on);
+  cLock.textContent = on ? '🔓 Unlock' : '🔒 Lock';
+}
+function setLock(m){
+  lockedM=m;
+  renderLock();
+  if(m!==null){
+    toast('Locked to '+labelOf(m));
+  }else if(pending && !pending.noTone){
+    // unlocking feeds the last detected pitch into the session table
+    const lab=labelOf(pending.m), cents=centsFor(pending.f0,pending.m);
+    addReading(lab, pending.m, pending.f0, cents);
+    pending=null;
+    toast('Unlocked — saved '+lab);
+  }else{
+    toast('Unlocked');
+  }
+  renderPending();
+}
+cLock.onclick=()=>{
+  if(lockedM!==null) setLock(null);
+  else if(pending) setLock(pending.m);
+};
+lockBar.onclick=()=>setLock(null);
 // Asserting a note re-measures the pluck within ±150¢ of that note's expected frequency.
 function assertNote(m){
   if(!pending) return;
   m=Math.max(21,Math.min(108,m));
   pending.m=m; pending.asserted=true;
+  if(lockedM!==null && lockedM!==m){ lockedM=m; renderLock(); } // lock follows the nudge
   if(lastSpec){
     const noteF=440*Math.pow(2,(m-69)/12);
     const f=pickPitch(lastSpec, noteF*Math.pow(2,-150/1200), noteF*Math.pow(2,150/1200));
@@ -730,21 +668,34 @@ cSave.onclick=()=>{
   const {f0,m}=pending;
   const cents=centsFor(f0,m), lab=labelOf(m);
   addReading(lab, m, f0, cents);
-  surveyNote(lab, m, cents);
   pending=null; renderPending();
   toast('Saved '+lab);
 };
 
 function analyzeAndShow(buf){
   const spec=computeSpectrum(buf,sr);
-  const f0=spec ? pickPitch(spec,50,2400) : null;
-  if(!f0){
-    setStatus('Couldn\'t hear a clear pitch — try again, closer to the reed');
-    mode='armed';
-    return;
+  let f0, m;
+  if(lockedM!==null){
+    // locked: only look for the locked note, within ±150¢ of its expected frequency
+    const noteF=440*Math.pow(2,(lockedM-69)/12);
+    f0=spec ? pickPitch(spec, noteF*Math.pow(2,-150/1200), noteF*Math.pow(2,150/1200)) : null;
+    if(!f0){
+      setStatus('No clear tone near '+labelOf(lockedM)+' (locked) — pluck again or unlock');
+      mode='armed';
+      return;
+    }
+    lastSpec=spec;
+    m=lockedM;
+  }else{
+    f0=spec ? pickPitch(spec,50,2400) : null;
+    if(!f0){
+      setStatus('Couldn\'t hear a clear pitch — try again, closer to the reed');
+      mode='armed';
+      return;
+    }
+    lastSpec=spec;
+    m=Math.round(69+12*Math.log2(f0/440));
   }
-  lastSpec=spec;
-  const m=Math.round(69+12*Math.log2(f0/440));
   if(pending) toast('Unsaved reading replaced');
   pending={f0:f0, m:m, noTone:false, asserted:false};
   renderPending();
