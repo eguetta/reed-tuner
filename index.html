@@ -55,16 +55,21 @@
   /* ---------- controls ---------- */
   .controls{margin:16px auto 0;width:min(92vw,430px);display:flex;gap:10px;align-items:stretch;}
   button{font:inherit;border:0;border-radius:10px;cursor:pointer;}
-  #bigbtn{flex:1;background:var(--copper);color:#221a12;font-size:19px;font-weight:700;
-    letter-spacing:.08em;text-transform:uppercase;padding:18px 10px;border-radius:12px;
-    box-shadow:0 3px 0 #8a5a2c;}
-  #bigbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #8a5a2c;}
-  #bigbtn.listening{background:var(--bake-2);color:var(--copper-hi);box-shadow:inset 0 0 0 2px var(--copper);}
+  #bigbtn{flex:1;display:flex;align-items:center;justify-content:center;
+    background:var(--bake-2);padding:14px 10px;border-radius:12px;
+    box-shadow:inset 0 0 0 2px #4a3d31;}
+  #bigbtn svg{width:32px;height:32px;fill:#6b6156;transition:fill .25s;}
+  #bigbtn:active{transform:translateY(1px);}
+  #bigbtn.listening{box-shadow:inset 0 0 0 2px var(--copper);}
+  #bigbtn.listening svg{fill:var(--copper-hi);
+    filter:drop-shadow(0 0 7px rgba(232,184,120,.85));
+    animation:pulse 1.4s ease-in-out infinite;}
+  @media (prefers-reduced-motion: reduce){#bigbtn.listening svg{animation:none}}
 
   /* ---------- pending-reading confirm bar ---------- */
-  .confirm{margin:12px auto 0;width:min(92vw,430px);display:none;background:var(--bake-2);
+  .confirm{margin:12px auto 0;width:min(92vw,430px);display:block;background:var(--bake-2);
     border:1px solid var(--copper);border-radius:12px;padding:10px 12px;}
-  .confirm.show{display:block;}
+  .confirm button:disabled,.confirm select:disabled{opacity:.35;pointer-events:none;}
   .confirm .cq{font-size:13px;color:var(--ivory-dim);letter-spacing:.04em;margin-bottom:8px;text-align:center;}
   .confirm .cq b{color:var(--copper-hi);}
   .confirm .nudge{display:flex;gap:6px;margin-bottom:8px;}
@@ -81,13 +86,6 @@
   #cLock:active{background:rgba(255,255,255,.08);}
   #cLock.on{background:var(--copper);color:#221a12;font-weight:700;}
 
-  /* ---------- lock banner ---------- */
-  .lockbar{margin:10px auto 0;width:min(92vw,430px);display:none;align-items:center;justify-content:center;
-    gap:8px;background:var(--bake-2);border:1px solid var(--copper);border-radius:10px;
-    padding:10px 12px;font-size:13px;letter-spacing:.06em;color:var(--copper-hi);cursor:pointer;}
-  .lockbar.show{display:flex;}
-  .lockbar b{font-size:15px;}
-  .lockbar .unhint{color:var(--ivory-dim);font-size:11px;text-transform:uppercase;letter-spacing:.1em;}
   #cSave{flex:2;background:var(--copper);color:#221a12;font-weight:700;font-size:15px;
     letter-spacing:.08em;text-transform:uppercase;padding:12px 8px;border-radius:10px;
     box-shadow:0 2px 0 #8a5a2c;}
@@ -158,7 +156,7 @@
 <div class="readout">
   <div class="note-big" id="noteBig">—</div>
   <div class="cents-big c-dim" id="centsBig">&nbsp;</div>
-  <div class="status" id="status">Tap Start, then pluck a reed</div>
+  <div class="status" id="status">Tap the mic, then pluck a reed</div>
 </div>
 
 <div class="confirm" id="confirmBar">
@@ -167,8 +165,8 @@
     <button id="cOctDown">Oct −</button>
     <button id="cOctUp">Oct +</button>
     <select id="cNoteSel" aria-label="reed this should be"></select>
-    <button id="cSemiUp">Note +</button>
     <button id="cSemiDown">Note −</button>
+    <button id="cSemiUp">Note +</button>
   </div>
   <div class="cbtns">
     <button id="cDiscard">Discard</button>
@@ -177,13 +175,10 @@
   </div>
 </div>
 
-<div class="lockbar" id="lockBar">
-  <span>🔒 Locked to <b id="lockNote"></b></span>
-  <span class="unhint">tap to unlock</span>
-</div>
-
 <div class="controls">
-  <button id="bigbtn">Start</button>
+  <button id="bigbtn" aria-label="microphone on/off">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+  </button>
 </div>
 
 <div class="err" id="errBox"></div>
@@ -245,7 +240,7 @@ setNeedle(0,true);
 
 /* ================= audio capture ================= */
 const NOTE_NAMES=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
-let ctx=null, srcNode=null, proc=null, running=false;
+let ctx=null, srcNode=null, proc=null, running=false, micStream=null;
 let ring=null, ringLen=0, ringPos=0, sr=48000;
 let mode='idle'; // idle | armed | capturing | analyzing | cooldown
 let capStart=0, capNeeded=0, noiseFloor=1e-4;
@@ -259,19 +254,19 @@ function setStatus(html){ statusEl.innerHTML=html; }
 async function start(){
   errBox.style.display='none';
   try{
-    const stream = await navigator.mediaDevices.getUserMedia({audio:{
+    micStream = await navigator.mediaDevices.getUserMedia({audio:{
       echoCancellation:false, noiseSuppression:false, autoGainControl:false
     }});
     ctx = new (window.AudioContext||window.webkitAudioContext)();
     await ctx.resume();
     sr = ctx.sampleRate;
-    srcNode = ctx.createMediaStreamSource(stream);
+    srcNode = ctx.createMediaStreamSource(micStream);
     proc = ctx.createScriptProcessor(4096,1,1);
     ringLen = Math.ceil(sr*4); ring = new Float32Array(ringLen); ringPos=0;
     proc.onaudioprocess = onAudio;
     srcNode.connect(proc); proc.connect(ctx.destination); // destination connect needed on some browsers; proc outputs silence
     running=true; mode='armed'; noiseFloor=1e-4;
-    bigbtn.textContent='Listening…'; bigbtn.classList.add('listening');
+    bigbtn.classList.add('listening');
     setStatus('<span class="pulse">● Pluck a reed</span>');
   }catch(e){
     errBox.style.display='block';
@@ -284,8 +279,10 @@ function stop(){
   if(proc){proc.disconnect();proc=null;}
   if(srcNode){srcNode.disconnect();srcNode=null;}
   if(ctx){ctx.close();ctx=null;}
-  bigbtn.textContent='Start'; bigbtn.classList.remove('listening');
-  setStatus('Tap Start, then pluck a reed');
+  // release the hardware mic so other apps can use it
+  if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}
+  bigbtn.classList.remove('listening');
+  setStatus('Tap the mic, then pluck a reed');
 }
 bigbtn.onclick=()=>{ running?stop():start(); };
 
@@ -580,7 +577,8 @@ const confirmQ=document.getElementById('confirmQ');
 const cSave=document.getElementById('cSave');
 const cLock=document.getElementById('cLock');
 const cNoteSel=document.getElementById('cNoteSel');
-const lockBar=document.getElementById('lockBar');
+const cDiscard=document.getElementById('cDiscard');
+const nudgeEls=['cOctDown','cOctUp','cNoteSel','cSemiDown','cSemiUp'].map(id=>document.getElementById(id));
 
 function labelOf(m){ return NOTE_NAMES[((m%12)+12)%12] + (Math.floor(m/12)-1); }
 function centsFor(f0,m){ return 1200*Math.log2(f0/(440*Math.pow(2,(m-69)/12))); }
@@ -591,7 +589,23 @@ for(let m=21;m<=108;m++){ // A0..C8 picker
 }
 
 function renderPending(){
-  if(!pending){ confirmBar.classList.remove('show'); return; }
+  // the bar is always on screen; without a reading its controls are just disabled
+  const has=!!pending;
+  for(const el of nudgeEls) el.disabled=!has;
+  cDiscard.disabled=!has;
+  if(!has){
+    confirmQ.innerHTML = lockedM!==null
+      ? 'Locked to <b>'+labelOf(lockedM)+'</b> — pluck a reed.'
+      : 'No reading yet — pluck a reed and it will show up here.';
+    cSave.textContent='Save'; cSave.disabled=true;
+    noteBig.textContent='—';
+    centsBig.innerHTML='&nbsp;'; centsBig.className='cents-big c-dim';
+    freqLine.innerHTML='&nbsp;';
+    setNeedle(0,false);
+    renderLock();
+    return;
+  }
+  renderLock();
   const {f0,m}=pending;
   const lab=labelOf(m);
   const name=NOTE_NAMES[((m%12)+12)%12], oct=Math.floor(m/12)-1;
@@ -613,36 +627,23 @@ function renderPending(){
       f0.toFixed(2)+' Hz — reed <b>'+lab+'</b>? If not, pick the reed it should be and I\'ll re-measure.';
     cSave.textContent='Save '+lab; cSave.disabled=false;
   }
-  confirmBar.classList.add('show');
 }
 function renderLock(){
   const on = lockedM!==null;
-  lockBar.classList.toggle('show', on);
-  if(on) document.getElementById('lockNote').textContent=labelOf(lockedM);
   cLock.classList.toggle('on', on);
-  cLock.textContent = on ? '🔓 Unlock' : '🔒 Lock';
+  cLock.textContent = on ? '🔓 '+labelOf(lockedM) : '🔒 Lock';
+  cLock.disabled = !on && !pending;
 }
 function setLock(m){
   lockedM=m;
   renderLock();
-  if(m!==null){
-    toast('Locked to '+labelOf(m));
-  }else if(pending && !pending.noTone){
-    // unlocking feeds the last detected pitch into the session table
-    const lab=labelOf(pending.m), cents=centsFor(pending.f0,pending.m);
-    addReading(lab, pending.m, pending.f0, cents);
-    pending=null;
-    toast('Unlocked — saved '+lab);
-  }else{
-    toast('Unlocked');
-  }
+  toast(m!==null ? 'Locked to '+labelOf(m) : 'Unlocked');
   renderPending();
 }
 cLock.onclick=()=>{
   if(lockedM!==null) setLock(null);
   else if(pending) setLock(pending.m);
 };
-lockBar.onclick=()=>setLock(null);
 // Asserting a note re-measures the pluck within ±150¢ of that note's expected frequency.
 function assertNote(m){
   if(!pending) return;
@@ -668,9 +669,12 @@ cSave.onclick=()=>{
   const {f0,m}=pending;
   const cents=centsFor(f0,m), lab=labelOf(m);
   addReading(lab, m, f0, cents);
-  pending=null; renderPending();
+  pending=null;
+  lockedM=null; // saving a note always releases the lock
+  renderLock(); renderPending();
   toast('Saved '+lab);
 };
+renderPending();
 
 function analyzeAndShow(buf){
   const spec=computeSpectrum(buf,sr);
