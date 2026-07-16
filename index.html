@@ -2,14 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Reed Tuner — Wurlitzer 112</title>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-180.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Reed Tuner">
-<meta name="theme-color" content="#241d18">
 <style>
   :root{
     --bake: #241d18;        /* bakelite brown-black */
@@ -46,6 +40,7 @@
     font-variant-numeric:tabular-nums;}
   .note-big sup{font-size:40px;font-weight:600;color:var(--ivory-dim);}
   .cents-big{font-size:34px;font-weight:600;margin-top:2px;font-variant-numeric:tabular-nums;}
+  .vs-target{font-size:14px;color:var(--ivory-dim);margin-top:4px;letter-spacing:.04em;}
   .status{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--ivory-dim);
     margin-top:10px;min-height:20px;}
   .status .pulse{color:var(--copper-hi);animation:pulse 1.4s ease-in-out infinite;}
@@ -55,44 +50,24 @@
   /* ---------- controls ---------- */
   .controls{margin:16px auto 0;width:min(92vw,430px);display:flex;gap:10px;align-items:stretch;}
   button{font:inherit;border:0;border-radius:10px;cursor:pointer;}
-  #bigbtn{flex:1;display:flex;align-items:center;justify-content:center;
-    background:var(--bake-2);padding:14px 10px;border-radius:12px;
-    box-shadow:inset 0 0 0 2px #4a3d31;}
-  #bigbtn svg{width:32px;height:32px;fill:#6b6156;transition:fill .25s;}
-  #bigbtn:active{transform:translateY(1px);}
-  #bigbtn.listening{box-shadow:inset 0 0 0 2px var(--copper);}
-  #bigbtn.listening svg{fill:var(--copper-hi);
-    filter:drop-shadow(0 0 7px rgba(232,184,120,.85));
-    animation:pulse 1.4s ease-in-out infinite;}
-  @media (prefers-reduced-motion: reduce){#bigbtn.listening svg{animation:none}}
+  #bigbtn{flex:1;background:var(--copper);color:#221a12;font-size:19px;font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;padding:18px 10px;border-radius:12px;
+    box-shadow:0 3px 0 #8a5a2c;}
+  #bigbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #8a5a2c;}
+  #bigbtn.listening{background:var(--bake-2);color:var(--copper-hi);box-shadow:inset 0 0 0 2px var(--copper);}
 
-  /* ---------- pending-reading confirm bar ---------- */
-  .confirm{margin:12px auto 0;width:min(92vw,430px);display:block;background:var(--bake-2);
-    border:1px solid var(--copper);border-radius:12px;padding:10px 12px;}
-  .confirm button:disabled,.confirm select:disabled{opacity:.35;pointer-events:none;}
-  .confirm .cq{font-size:13px;color:var(--ivory-dim);letter-spacing:.04em;margin-bottom:8px;text-align:center;}
-  .confirm .cq b{color:var(--copper-hi);}
-  .confirm .nudge{display:flex;gap:6px;margin-bottom:8px;}
-  .confirm .nudge button{flex:1;background:transparent;color:var(--copper-hi);border:1px solid #4a3d31;
-    border-radius:8px;padding:8px 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;}
-  .confirm .nudge button:active{background:rgba(255,255,255,.08);}
-  .confirm .nudge select{flex:1.3;background:var(--bake);color:var(--copper-hi);border:1px solid var(--copper);
-    border-radius:8px;font:inherit;font-size:13px;font-weight:600;padding:6px 2px;text-align:center;
-    -webkit-appearance:none;appearance:none;}
-  #cSave:disabled{opacity:.35;pointer-events:none;}
-  .confirm .cbtns{display:flex;gap:8px;}
-  #cLock{flex:1;background:transparent;color:var(--copper-hi);border:1px solid var(--copper);
-    border-radius:10px;padding:12px 8px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;}
-  #cLock:active{background:rgba(255,255,255,.08);}
-  #cLock.on{background:var(--copper);color:#221a12;font-weight:700;}
+  .target-box{background:var(--bake-2);border-radius:12px;padding:8px 12px;display:flex;
+    flex-direction:column;justify-content:center;gap:2px;min-width:118px;}
+  .target-box label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ivory-dim);}
+  .target-row{display:flex;align-items:center;gap:6px;}
+  .target-row button{background:transparent;color:var(--copper-hi);font-size:20px;width:28px;height:28px;line-height:1;border-radius:6px;}
+  .target-row button:active{background:rgba(255,255,255,.08);}
+  #targetVal{font-size:17px;font-weight:700;min-width:44px;text-align:center;font-variant-numeric:tabular-nums;}
 
-  #cSave{flex:2;background:var(--copper);color:#221a12;font-weight:700;font-size:15px;
-    letter-spacing:.08em;text-transform:uppercase;padding:12px 8px;border-radius:10px;
-    box-shadow:0 2px 0 #8a5a2c;}
-  #cSave:active{transform:translateY(1px);box-shadow:0 1px 0 #8a5a2c;}
-  #cDiscard{flex:1;background:transparent;color:var(--ivory-dim);border:1px solid #4a3d31;
-    border-radius:10px;padding:12px 8px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;}
-  #cDiscard:active{background:rgba(255,255,255,.08);}
+  .presets{margin:8px auto 0;width:min(92vw,430px);display:flex;gap:8px;}
+  .presets button{flex:1;background:transparent;color:var(--ivory-dim);border:1px solid #4a3d31;
+    border-radius:8px;padding:7px 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;}
+  .presets button.active{color:var(--copper-hi);border-color:var(--copper);}
 
   /* ---------- session board ---------- */
   .history{margin:18px auto 24px;width:min(92vw,430px);flex:1;}
@@ -126,6 +101,12 @@
   .err b{color:var(--bad);}
 
   .c-good{color:var(--good)} .c-warn{color:var(--warn)} .c-bad{color:var(--bad)} .c-dim{color:var(--ivory-dim)}
+
+  /* live input level */
+  .lvl{width:min(60vw,260px);height:5px;background:#3a2f26;border-radius:3px;
+    margin:10px auto 0;overflow:hidden;opacity:0;transition:opacity .3s;}
+  .lvl.on{opacity:1;}
+  .lvl-bar{height:100%;width:0%;background:var(--copper);border-radius:3px;transition:width .12s linear;}
 </style>
 </head>
 <body>
@@ -142,6 +123,8 @@
     <path d="M15 235 A 215 215 0 0 1 415 235" fill="none" stroke="#c9b895" stroke-width="2"/>
     <g id="ticks"></g>
     <g id="labels"></g>
+    <!-- target marker -->
+    <g id="targetMark"><polygon points="-6,0 6,0 0,12" fill="var(--copper)"/></g>
     <!-- needle -->
     <g id="needle">
       <line x1="0" y1="0" x2="0" y2="-176" stroke="#7a2f22" stroke-width="3.4" stroke-linecap="round"/>
@@ -156,30 +139,29 @@
 <div class="readout">
   <div class="note-big" id="noteBig">—</div>
   <div class="cents-big c-dim" id="centsBig">&nbsp;</div>
-  <div class="status" id="status">Tap the mic, then pluck a reed</div>
-</div>
-
-<div class="confirm" id="confirmBar">
-  <div class="cq" id="confirmQ"></div>
-  <div class="nudge">
-    <button id="cOctDown">Oct −</button>
-    <button id="cOctUp">Oct +</button>
-    <select id="cNoteSel" aria-label="reed this should be"></select>
-    <button id="cSemiDown">Note −</button>
-    <button id="cSemiUp">Note +</button>
-  </div>
-  <div class="cbtns">
-    <button id="cDiscard">Discard</button>
-    <button id="cLock">🔒 Lock</button>
-    <button id="cSave">Save</button>
-  </div>
+  <div class="vs-target" id="vsTarget">&nbsp;</div>
+  <div class="status" id="status">Tap Start, then pluck a reed</div>
+  <div class="lvl" id="lvlWrap"><div class="lvl-bar" id="lvlBar"></div></div>
 </div>
 
 <div class="controls">
-  <button id="bigbtn" aria-label="microphone on/off">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
-  </button>
+  <button id="bigbtn">Start</button>
+  <div class="target-box">
+    <label>Tuning target</label>
+    <div class="target-row">
+      <button id="tminus" aria-label="lower target">−</button>
+      <span id="targetVal">+14¢</span>
+      <button id="tplus" aria-label="raise target">+</button>
+    </div>
+  </div>
 </div>
+
+<div class="presets">
+  <button id="pHouse" class="active">House avg (+14¢)</button>
+  <button id="pConcert">Concert A440 (0¢)</button>
+  <button id="pSurvey">Survey</button>
+</div>
+<div class="sess-meta" id="surveyResult" style="width:min(92vw,430px);margin:8px auto 0;display:none;line-height:1.5;"></div>
 
 <div class="err" id="errBox"></div>
 
@@ -192,7 +174,7 @@
     </span>
   </h2>
   <div class="sess-meta" id="sessMeta"></div>
-  <div id="histList"><div class="empty">Confirmed readings appear here — only what you save is recorded.</div></div>
+  <div id="histList"><div class="empty">Readings will appear here — every pluck is kept, nothing is overwritten.</div></div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -229,6 +211,7 @@ function centsToAngle(c){ c = Math.max(-RANGE, Math.min(RANGE, c)); return (c/RA
 })();
 
 const needle = document.getElementById('needle');
+const targetMark = document.getElementById('targetMark');
 function setNeedle(c, instant){
   const style = needle.style;
   style.transition = instant ? 'none' : 'transform .5s cubic-bezier(.2,1.2,.4,1)';
@@ -236,11 +219,30 @@ function setNeedle(c, instant){
   style.transform = `translate(215px,235px) rotate(${centsToAngle(c)}deg) translate(-215px,-235px)`;
   needle.setAttribute('transform',''); // ensure CSS transform used
 }
+function setTargetMark(c){
+  const a=centsToAngle(c);
+  targetMark.setAttribute('transform',`translate(215,235) rotate(${a}) translate(0,-206)`);
+}
 setNeedle(0,true);
+
+/* ================= state & target ================= */
+let target = 14;
+const targetVal=document.getElementById('targetVal');
+function renderTarget(){
+  targetVal.textContent=(target>0?'+':'')+target+'¢';
+  setTargetMark(target);
+  document.getElementById('pHouse').classList.toggle('active', target===14);
+  document.getElementById('pConcert').classList.toggle('active', target===0);
+}
+document.getElementById('tminus').onclick=()=>{target=Math.max(-50,target-1);renderTarget();};
+document.getElementById('tplus').onclick =()=>{target=Math.min(50,target+1);renderTarget();};
+document.getElementById('pHouse').onclick=()=>{target=14;renderTarget();};
+document.getElementById('pConcert').onclick=()=>{target=0;renderTarget();};
+renderTarget();
 
 /* ================= audio capture ================= */
 const NOTE_NAMES=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
-let ctx=null, srcNode=null, proc=null, running=false, micStream=null;
+let ctx=null, srcNode=null, proc=null, running=false;
 let ring=null, ringLen=0, ringPos=0, sr=48000;
 let mode='idle'; // idle | armed | capturing | analyzing | cooldown
 let capStart=0, capNeeded=0, noiseFloor=1e-4;
@@ -251,22 +253,44 @@ const errBox=document.getElementById('errBox');
 
 function setStatus(html){ statusEl.innerHTML=html; }
 
+/* live input level meter (log scale so quiet room noise is visible) */
+const lvlWrap=document.getElementById('lvlWrap');
+const lvlBar=document.getElementById('lvlBar');
+let lvlPeak=0;
+function levelMeter(rms){
+  lvlPeak=Math.max(rms, lvlPeak*0.85);
+  const db=20*Math.log10(Math.max(lvlPeak,1e-7));   // -140..0
+  const pct=Math.max(0, Math.min(100, (db+80)/80*100)); // -80dB..0dB → 0..100%
+  lvlBar.style.width=pct.toFixed(0)+'%';
+}
+
+/* iOS suspends the audio context when the app is backgrounded — wake it up */
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden && ctx && ctx.state==='suspended') ctx.resume();
+});
+
 async function start(){
   errBox.style.display='none';
   try{
-    micStream = await navigator.mediaDevices.getUserMedia({audio:{
-      echoCancellation:false, noiseSuppression:false, autoGainControl:false
-    }});
+    let stream;
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({audio:{
+        echoCancellation:false, noiseSuppression:false, autoGainControl:false
+      }});
+    }catch(e1){
+      // Some iOS versions reject the strict constraints — retry with defaults
+      stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    }
     ctx = new (window.AudioContext||window.webkitAudioContext)();
     await ctx.resume();
     sr = ctx.sampleRate;
-    srcNode = ctx.createMediaStreamSource(micStream);
+    srcNode = ctx.createMediaStreamSource(stream);
     proc = ctx.createScriptProcessor(4096,1,1);
     ringLen = Math.ceil(sr*4); ring = new Float32Array(ringLen); ringPos=0;
     proc.onaudioprocess = onAudio;
     srcNode.connect(proc); proc.connect(ctx.destination); // destination connect needed on some browsers; proc outputs silence
     running=true; mode='armed'; noiseFloor=1e-4;
-    bigbtn.classList.add('listening');
+    bigbtn.textContent='Listening…'; bigbtn.classList.add('listening'); lvlWrap.classList.add('on');
     setStatus('<span class="pulse">● Pluck a reed</span>');
   }catch(e){
     errBox.style.display='block';
@@ -279,10 +303,8 @@ function stop(){
   if(proc){proc.disconnect();proc=null;}
   if(srcNode){srcNode.disconnect();srcNode=null;}
   if(ctx){ctx.close();ctx=null;}
-  // release the hardware mic so other apps can use it
-  if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null;}
-  bigbtn.classList.remove('listening');
-  setStatus('Tap the mic, then pluck a reed');
+  bigbtn.textContent='Start'; bigbtn.classList.remove('listening'); lvlWrap.classList.remove('on'); lvlBar.style.width='0%';
+  setStatus('Tap Start, then pluck a reed');
 }
 bigbtn.onclick=()=>{ running?stop():start(); };
 
@@ -295,9 +317,10 @@ function onAudio(ev){
   let s=0; for(let i=0;i<inp.length;i++) s+=inp[i]*inp[i];
   const rms=Math.sqrt(s/inp.length);
   if(mode==='armed'){
-    noiseFloor = Math.min(noiseFloor*1.02, Math.max(noiseFloor*0.995, 1e-5));
+    noiseFloor = Math.min(noiseFloor*1.02, Math.max(noiseFloor*0.995, 1e-6));
     if(rms < noiseFloor*3) noiseFloor = noiseFloor*0.9 + rms*0.1;
-    const thresh = Math.max(noiseFloor*7, 0.006);
+    levelMeter(rms);
+    const thresh = Math.max(noiseFloor*6, 0.0012);   // was 0.006 — too high for iPhone mic levels
     if(rms > thresh){
       mode='capturing';
       capStart = ringPos;                     // onset ≈ now
@@ -346,28 +369,9 @@ function fftRadix2(re, im){
   }
 }
 
-// high reeds are nearly pure tones (bar overtones are inharmonic), so judge them
-// on fewer harmonic positions — extra positions only accumulate noise
-function nHarm(f0){ return f0>1000?3 : f0>500?5 : 8; }
-
-function computeSpectrum(buf, sampleRate){
-  // trim to the ringing part: skip the attack thump, stop once the tone has died away.
-  // Fast-decaying high reeds get a short clean window instead of 1.5 s of mostly noise.
-  const blk=Math.floor(sampleRate*0.02), nb=Math.floor(buf.length/blk);
-  const sBlk=Math.ceil(0.12/0.02);                 // 120 ms attack skip
-  const env=new Float32Array(nb); let epeak=0;
-  for(let b=0;b<nb;b++){
-    let s2=0; const o=b*blk;
-    for(let i=0;i<blk;i++) s2+=buf[o+i]*buf[o+i];
-    env[b]=Math.sqrt(s2/blk);
-    if(b>=sBlk && env[b]>epeak) epeak=env[b];      // peak of the ring, not of the attack thump
-  }
-  if(epeak<=0) return null;
-  let eBlk=nb;
-  for(let b=sBlk;b<nb;b++) if(env[b]<epeak*0.05){ eBlk=b; break; }
-  const minBlk=Math.ceil(0.35/0.02);               // but never below 0.35 s
-  if(eBlk-sBlk<minBlk) eBlk=Math.min(nb, sBlk+minBlk);
-  const seg=buf.subarray(sBlk*blk, eBlk*blk);
+function analyzePitch(buf, sampleRate){
+  const skip=Math.floor(sampleRate*0.10);           // skip attack transient
+  const seg=buf.subarray(skip);
   const N=seg.length;
   // Hann window
   const NFFT=524288; // 2^19 — heavy zero padding for resolution
@@ -382,60 +386,38 @@ function computeSpectrum(buf, sampleRate){
   let mx=0;
   for(let i=0;i<half;i++){ const m=Math.hypot(re[i],im[i]); mag[i]=m; if(m>mx)mx=m; }
   if(mx<=0) return null;
-  // whiten: divide each bin by its local (±50 Hz) average, so a quiet high tone
-  // stands out just as much as a loud bass — the pluck thump can't dominate
+  for(let i=0;i<half;i++) mag[i]/=mx;
   const df=sampleRate/NFFT;
-  const W=Math.max(1,Math.round(50/df));
-  const pre=new Float64Array(half+1);
-  for(let i=0;i<half;i++) pre[i+1]=pre[i]+mag[i];
-  // regularize with the noise floor (median, subsampled) — a loud bass can't
-  // inflate the median the way it inflates the mean
-  const sub=[];
-  for(let i=0;i<half;i+=8) sub.push(mag[i]);
-  sub.sort((a,b)=>a-b);
-  const eps=Math.max(0.5*sub[sub.length>>1], mx*1e-6);
-  const white=new Float32Array(half);
-  for(let i=0;i<half;i++){
-    const lo=Math.max(0,i-W), hi=Math.min(half,i+W+1);
-    white[i]=Math.min(100, mag[i]/((pre[hi]-pre[lo])/(hi-lo)+eps));
-  }
-  return {white:white, df:df, half:half};
-}
 
-// harmonic summation over 1-cent grid within [fMin, fMax], on the whitened spectrum
-function pickPitch(spec, fMin, fMax){
-  const {white,df,half}=spec;
-  const nCand=Math.floor(1200*Math.log2(fMax/fMin));
-  const fCap=Math.min(df*half, 10000); // ignore the near-dead top of the spectrum
+  // harmonic summation over 1-cent grid, 50–2400 Hz
+  const nCand=Math.floor(1200*Math.log2(2400/50));
   let bestScore=-1, bestF=0;
+  const NH=8;
   for(let c=0;c<nCand;c++){
-    const f0=fMin*Math.pow(2,c/1200);
-    const NH=nHarm(f0);
-    let score=0, pk1=0;
+    const f0=50*Math.pow(2,c/1200);
+    let score=0;
     for(let h=1;h<=NH;h++){
-      const fh=f0*h; if(fh>=fCap) break;
+      const fh=f0*h; if(fh>=sampleRate/2) break;
       const i0=Math.round(fh/df);
       let pk=0;
-      for(let q=-2;q<=2;q++){ const v=white[Math.min(half-1,Math.max(0,i0+q))]; if(v>pk)pk=v; }
-      if(h===1){ pk1=pk; if(pk1<4) break; }    // only candidates with a real peak at
-      score+=pk/Math.sqrt(h);                  // their own fundamental (≥4× local floor)
-    }                                          // are eligible — kills thumps & subharmonics
-    if(pk1>=4 && score>bestScore){bestScore=score;bestF=f0;}
+      for(let q=-2;q<=2;q++){ const v=mag[Math.min(half-1,Math.max(0,i0+q))]; if(v>pk)pk=v; }
+      score+=pk/Math.sqrt(h);
+    }
+    if(score>bestScore){bestScore=score;bestF=f0;}
   }
-  if(bestScore<0) return null; // no candidate with a clear fundamental anywhere in range
+  if(bestScore<0.15) return null; // too quiet / no tonal content
 
   // refine on strongest harmonic with parabolic interpolation
   let bAmp=0,bH=1,bI=-1;
-  const NH=nHarm(bestF);
   for(let h=1;h<=NH;h++){
     const i0=Math.round(bestF*h/df);
     const w=Math.max(3,Math.round(bestF*0.02*h/df));
     const lo=Math.max(1,i0-w), hi=Math.min(half-2,i0+w);
     if(hi<=lo)break;
-    for(let i=lo;i<=hi;i++) if(white[i]>bAmp){bAmp=white[i];bH=h;bI=i;}
+    for(let i=lo;i<=hi;i++) if(mag[i]>bAmp){bAmp=mag[i];bH=h;bI=i;}
   }
   if(bI<1) return bestF;
-  const a=white[bI-1],b=white[bI],c2=white[bI+1];
+  const a=mag[bI-1],b=mag[bI],c2=mag[bI+1];
   const den=a-2*b+c2;
   const dp=Math.abs(den)>1e-12 ? 0.5*(a-c2)/den : 0;
   return (bI+dp)*df/bH;
@@ -444,6 +426,7 @@ function pickPitch(spec, fMin, fMax){
 /* ================= result display ================= */
 const noteBig=document.getElementById('noteBig');
 const centsBig=document.getElementById('centsBig');
+const vsTarget=document.getElementById('vsTarget');
 const freqLine=document.getElementById('freqLine');
 const histList=document.getElementById('histList');
 
@@ -454,7 +437,7 @@ function colorClass(dev){
 
 /* ================= sessions (persistent) ================= */
 const STORE_KEY='reedtuner_sessions_v1';
-let store=null;   // {sessions:[{id,name,created,readings:[{ts,label,midi,f0,cents}]}], currentId}
+let store=null;   // {sessions:[{id,name,created,targetAtStart,readings:[{ts,label,midi,f0,cents}]}], currentId}
 let openNotes={}; // which note rows are expanded
 
 function loadStore(){
@@ -475,7 +458,8 @@ function fmtDate(ts){
 }
 function newSession(announce){
   const now=Date.now();
-  const s={id:'s'+now, name:'Session '+fmtDate(now), created:now, readings:[]};
+  const s={id:'s'+now, name:'Session '+fmtDate(now), created:now,
+           targetAtStart:target, readings:[]};
   store.sessions.push(s);
   // keep at most 20 sessions
   while(store.sessions.length>20) store.sessions.shift();
@@ -496,8 +480,8 @@ function renderSession(){
   const n=s.readings.length;
   const notesSeen=new Set(s.readings.map(r=>r.label)).size;
   document.getElementById('sessMeta').textContent=
-    n? (n+' plucks · '+notesSeen+' reeds') : 'No readings yet';
-  if(!n){ histList.innerHTML='<div class="empty">Confirmed readings appear here — only what you save is recorded.</div>'; return; }
+    n? (n+' plucks · '+notesSeen+' reeds · target '+(target>=0?'+':'')+target+'¢') : 'No readings yet';
+  if(!n){ histList.innerHTML='<div class="empty">Readings will appear here — every pluck is kept, nothing is overwritten.</div>'; return; }
   // group by note, keep reading order per note; sort groups by pitch (midi)
   const groups={};
   for(const r of s.readings){ (groups[r.label]=groups[r.label]||[]).push(r); }
@@ -505,7 +489,7 @@ function renderSession(){
   histList.innerHTML='';
   for(const lab of labels){
     const rs=groups[lab], last=rs[rs.length-1];
-    const dev=last.cents;
+    const dev=last.cents-target;
     const row=document.createElement('div');
     row.className='hrow nrow';
     row.innerHTML='<span class="hn">'+lab+'<span class="ncount">×'+rs.length+'</span></span>'+
@@ -518,7 +502,7 @@ function renderSession(){
       const it=document.createElement('div');
       it.className='hitem';
       it.innerHTML='<span>'+fmtDate(r.ts)+'</span><span>'+r.f0.toFixed(2)+' Hz</span>'+
-        '<span class="'+colorClass(r.cents)+'">'+(r.cents>=0?'+':'')+r.cents.toFixed(1)+'¢</span>';
+        '<span class="'+colorClass(r.cents-target)+'">'+(r.cents>=0?'+':'')+r.cents.toFixed(1)+'¢</span>';
       hist.appendChild(it);
     }
     row.onclick=()=>{ openNotes[lab]=!openNotes[lab]; hist.classList.toggle('open'); };
@@ -528,7 +512,7 @@ function renderSession(){
 function exportSession(){
   const s=cur(); if(!s || !s.readings.length){ toast('Nothing to export yet'); return; }
   let out=s.name+' — Reed Tuner export\n';
-  out+='Tuning reference: concert pitch (A440)\n\n';
+  out+='Target: '+(target>=0?'+':'')+target+'¢ vs A440\n\n';
   out+='Note\tLatest ¢\tLatest Hz\tPlucks\tAll readings (oldest→newest)\n';
   const groups={};
   for(const r of s.readings){ (groups[r.label]=groups[r.label]||[]).push(r); }
@@ -566,154 +550,95 @@ document.getElementById('btnNewSess').onclick=()=>{
 };
 document.getElementById('btnExport').onclick=exportSession;
 
-loadStore(); renderSession();
+/* ================= survey mode (establish house average) ================= */
+let surveyOn=false;
+let surveyMap={};   // label -> {midi, cents} (latest pluck per reed)
+const pSurvey=document.getElementById('pSurvey');
+const surveyResult=document.getElementById('surveyResult');
 
-/* ================= pending reading — nothing is saved until confirmed ================= */
-let pending=null;  // {f0, m, noTone, asserted}  m = MIDI note the reed is meant to be
-let lastSpec=null; // spectrum of the last pluck, kept so asserting a note can re-measure
-let lockedM=null;  // when set, detection only searches near this MIDI note
-const confirmBar=document.getElementById('confirmBar');
-const confirmQ=document.getElementById('confirmQ');
-const cSave=document.getElementById('cSave');
-const cLock=document.getElementById('cLock');
-const cNoteSel=document.getElementById('cNoteSel');
-const cDiscard=document.getElementById('cDiscard');
-const nudgeEls=['cOctDown','cOctUp','cNoteSel','cSemiDown','cSemiUp'].map(id=>document.getElementById(id));
-
-function labelOf(m){ return NOTE_NAMES[((m%12)+12)%12] + (Math.floor(m/12)-1); }
-function centsFor(f0,m){ return 1200*Math.log2(f0/(440*Math.pow(2,(m-69)/12))); }
-
-for(let m=21;m<=108;m++){ // A0..C8 picker
-  const o=document.createElement('option'); o.value=m; o.textContent=labelOf(m);
-  cNoteSel.appendChild(o);
+function surveyStart(){
+  surveyOn=true; surveyMap={};
+  pSurvey.textContent='Finish (0 reeds)';
+  pSurvey.classList.add('active');
+  surveyResult.style.display='none';
+  toast('Survey: pluck every reed, A1 upward');
+  if(!running) setStatus('Tap Start, then pluck every reed from the bottom up');
 }
-
-function renderPending(){
-  // the bar is always on screen; without a reading its controls are just disabled
-  const has=!!pending;
-  for(const el of nudgeEls) el.disabled=!has;
-  cDiscard.disabled=!has;
-  if(!has){
-    confirmQ.innerHTML = lockedM!==null
-      ? 'Locked to <b>'+labelOf(lockedM)+'</b> — pluck a reed.'
-      : 'No reading yet — pluck a reed and it will show up here.';
-    cSave.textContent='Save'; cSave.disabled=true;
-    noteBig.textContent='—';
-    centsBig.innerHTML='&nbsp;'; centsBig.className='cents-big c-dim';
-    freqLine.innerHTML='&nbsp;';
-    setNeedle(0,false);
-    renderLock();
+function surveyNote(label, midi, cents){
+  if(!surveyOn) return;
+  surveyMap[label]={midi:midi, cents:cents};   // repeat plucks overwrite within the survey — latest counts
+  pSurvey.textContent='Finish ('+Object.keys(surveyMap).length+' reeds)';
+}
+function median(arr){
+  const a=[...arr].sort((x,y)=>x-y);
+  const m=a.length>>1;
+  return a.length%2 ? a[m] : (a[m-1]+a[m])/2;
+}
+function surveyFinish(){
+  surveyOn=false;
+  pSurvey.classList.remove('active');
+  pSurvey.textContent='Survey';
+  const labels=Object.keys(surveyMap);
+  if(labels.length<8){
+    toast(labels.length?'Only '+labels.length+' reeds — too few for an average':'Survey cancelled');
     return;
   }
-  renderLock();
-  const {f0,m}=pending;
-  const lab=labelOf(m);
-  const name=NOTE_NAMES[((m%12)+12)%12], oct=Math.floor(m/12)-1;
-  noteBig.innerHTML=name+'<sup>'+oct+'</sup>';
-  cNoteSel.value=String(m);
-  if(pending.noTone){
-    centsBig.textContent='—'; centsBig.className='cents-big c-dim';
-    freqLine.textContent='—';
-    confirmQ.innerHTML='No clear tone near <b>'+lab+'</b> in that pluck — pick another note, pluck again, or discard.';
-    cSave.textContent='Save'; cSave.disabled=true;
-  }else{
-    const cents=centsFor(f0,m);
-    centsBig.textContent=(cents>=0?'+':'')+cents.toFixed(1)+'¢';
-    centsBig.className='cents-big '+colorClass(cents);
-    freqLine.textContent=f0.toFixed(2)+' Hz';
-    setNeedle(cents,false);
-    confirmQ.innerHTML=(lockedM===m?'Locked to <b>'+lab+'</b>: heard ':
-      pending.asserted?'Re-measured near <b>'+lab+'</b>: found ':'Heard ')+
-      f0.toFixed(2)+' Hz — reed <b>'+lab+'</b>? If not, pick the reed it should be and I\'ll re-measure.';
-    cSave.textContent='Save '+lab; cSave.disabled=false;
+  const houseExact=median(labels.map(l=>surveyMap[l].cents));
+  const house=Math.round(houseExact);
+  // outliers: > 12 cents from the house median
+  const sorted=labels.sort((a,b)=>surveyMap[a].midi-surveyMap[b].midi);
+  const sharps=[], flats=[];
+  for(const l of sorted){
+    const d=surveyMap[l].cents-houseExact;
+    if(d>12) sharps.push(l+' ('+(d>0?'+':'')+d.toFixed(0)+'¢)');
+    else if(d<-12) flats.push(l+' ('+d.toFixed(0)+'¢)');
+  }
+  let html='<b style="color:var(--copper-hi)">House average: '+(house>=0?'+':'')+house+
+    '¢</b> (median of '+labels.length+' reeds)';
+  if(sharps.length) html+='<br>Sharp of the pack: '+sharps.join(', ');
+  if(flats.length)  html+='<br>Flat of the pack: '+flats.join(', ');
+  if(!sharps.length && !flats.length) html+='<br>No reed strays more than 12¢ from the pack.';
+  surveyResult.innerHTML=html;
+  surveyResult.style.display='block';
+  if(confirm('House average is '+(house>=0?'+':'')+house+'¢. Set it as the tuning target?')){
+    target=Math.max(-50,Math.min(50,house));
+    renderTarget();
+    toast('Target set to '+(target>=0?'+':'')+target+'¢');
   }
 }
-function renderLock(){
-  const on = lockedM!==null;
-  cLock.classList.toggle('on', on);
-  cLock.textContent = on ? '🔓 '+labelOf(lockedM) : '🔒 Lock';
-  cLock.disabled = !on && !pending;
-}
-function setLock(m){
-  lockedM=m;
-  renderLock();
-  toast(m!==null ? 'Locked to '+labelOf(m) : 'Unlocked');
-  renderPending();
-}
-cLock.onclick=()=>{
-  if(lockedM!==null) setLock(null);
-  else if(pending) setLock(pending.m);
-};
-// Asserting a note re-measures the pluck within ±150¢ of that note's expected frequency.
-function assertNote(m){
-  if(!pending) return;
-  m=Math.max(21,Math.min(108,m));
-  pending.m=m; pending.asserted=true;
-  if(lockedM!==null && lockedM!==m){ lockedM=m; renderLock(); } // lock follows the nudge
-  if(lastSpec){
-    const noteF=440*Math.pow(2,(m-69)/12);
-    const f=pickPitch(lastSpec, noteF*Math.pow(2,-150/1200), noteF*Math.pow(2,150/1200));
-    if(f){ pending.f0=f; pending.noTone=false; }
-    else pending.noTone=true;
-  }
-  renderPending();
-}
-document.getElementById('cOctDown').onclick=()=>{ if(pending) assertNote(pending.m-12); };
-document.getElementById('cOctUp').onclick  =()=>{ if(pending) assertNote(pending.m+12); };
-document.getElementById('cSemiDown').onclick=()=>{ if(pending) assertNote(pending.m-1); };
-document.getElementById('cSemiUp').onclick  =()=>{ if(pending) assertNote(pending.m+1); };
-cNoteSel.onchange=()=>{ if(pending) assertNote(+cNoteSel.value); };
-document.getElementById('cDiscard').onclick=()=>{ pending=null; renderPending(); toast('Reading discarded'); };
-cSave.onclick=()=>{
-  if(!pending || pending.noTone) return;
-  const {f0,m}=pending;
-  const cents=centsFor(f0,m), lab=labelOf(m);
-  addReading(lab, m, f0, cents);
-  pending=null;
-  lockedM=null; // saving a note always releases the lock
-  renderLock(); renderPending();
-  toast('Saved '+lab);
-};
-renderPending();
+pSurvey.onclick=()=>{ surveyOn ? surveyFinish() : surveyStart(); };
+
+loadStore(); renderSession();
 
 function analyzeAndShow(buf){
-  const spec=computeSpectrum(buf,sr);
-  let f0, m;
-  if(lockedM!==null){
-    // locked: only look for the locked note, within ±150¢ of its expected frequency
-    const noteF=440*Math.pow(2,(lockedM-69)/12);
-    f0=spec ? pickPitch(spec, noteF*Math.pow(2,-150/1200), noteF*Math.pow(2,150/1200)) : null;
-    if(!f0){
-      setStatus('No clear tone near '+labelOf(lockedM)+' (locked) — pluck again or unlock');
-      mode='armed';
-      return;
-    }
-    lastSpec=spec;
-    m=lockedM;
-  }else{
-    f0=spec ? pickPitch(spec,50,2400) : null;
-    if(!f0){
-      setStatus('Couldn\'t hear a clear pitch — try again, closer to the reed');
-      mode='armed';
-      return;
-    }
-    lastSpec=spec;
-    m=Math.round(69+12*Math.log2(f0/440));
+  const f0=analyzePitch(buf,sr);
+  if(!f0){
+    setStatus('Couldn\'t hear a clear pitch — try again, closer to the reed');
+    mode='armed';
+    return;
   }
-  if(pending) toast('Unsaved reading replaced');
-  pending={f0:f0, m:m, noTone:false, asserted:false};
-  renderPending();
+  const midi=69+12*Math.log2(f0/440);
+  const m=Math.round(midi);
+  const cents=100*(midi-m);
+  const name=NOTE_NAMES[((m%12)+12)%12];
+  const oct=Math.floor(m/12)-1;
+  const dev=cents-target;
+
+  noteBig.innerHTML=name+'<sup>'+oct+'</sup>';
+  centsBig.textContent=(cents>=0?'+':'')+cents.toFixed(1)+'¢ vs A440';
+  centsBig.className='cents-big '+colorClass(dev);
+  vsTarget.textContent=(dev>=0?'+':'')+dev.toFixed(1)+'¢ from your target ('+(target>=0?'+':'')+target+'¢)';
+  freqLine.textContent=f0.toFixed(2)+' Hz';
+  setNeedle(cents,false);
+
+  addReading(name+oct, m, f0, cents);
+  surveyNote(name+oct, m, cents);
 
   // brief cooldown so the reed's own ring doesn't retrigger
   mode='cooldown';
   setStatus('…');
   setTimeout(()=>{ if(running){ mode='armed'; noiseFloor=1e-4;
-    setStatus('<span class="pulse">● Confirm below, or pluck again</span>'); } }, 1200);
-}
-
-// offline support when installed as a home-screen app
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+    setStatus('<span class="pulse">● Pluck the next reed</span>'); } }, 1200);
 }
 </script>
 </body>
